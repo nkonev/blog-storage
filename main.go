@@ -20,6 +20,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/minio/minio-go"
 )
 
 func configureEcho() *echo.Echo {
@@ -106,6 +107,8 @@ func main() {
 
 	container.Invoke(runMigrate)
 
+	runMinio()
+
 	if echoErr := container.Invoke(runEcho); echoErr != nil {
 		log.Fatalf("Error during invoke echo: %v", echoErr)
 	}
@@ -133,6 +136,49 @@ func runMigrate(m *migrate.Migrate) {
 		}
 	}
 	log.Info("Migration run successfully")
+}
+
+func runMinio() {
+	endpoint := viper.GetString("minio.endpoint")
+	accessKeyID := viper.GetString("minio.accessKeyId")
+	secretAccessKey := viper.GetString("minio.secretAccessKey")
+	useSSL := false
+
+	// Initialize minio client object.
+	minioClient, err := minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Make a new bucket called mymusic.
+	bucketName := "mymusic"
+	location := "us-east-1"
+
+	err = minioClient.MakeBucket(bucketName, location)
+	if err != nil {
+		// Check to see if we already own this bucket (which happens if you run this twice)
+		exists, err := minioClient.BucketExists(bucketName)
+		if err == nil && exists {
+			log.Printf("We already own %s", bucketName)
+		} else {
+			log.Fatal(err)
+		}
+	} else {
+		log.Printf("Successfully created %s", bucketName)
+	}
+
+	// Upload the zip file
+	objectName := "001_create_user.up.json"
+	filePath := "./migrations/001_create_user.up.json"
+	contentType := "application/json"
+
+	// Upload the zip file with FPutObject
+	n, err := minioClient.FPutObject(bucketName, objectName, filePath, minio.PutObjectOptions{ContentType: contentType})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("Successfully uploaded %s of size %d", objectName, n)
 }
 
 // rely on viper import and it's configured by

@@ -6,3 +6,4 @@ build
 vendor
 .vendor-new
 minio-data
+blog-store

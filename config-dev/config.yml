@@ -7,3 +7,8 @@ mongo:
   migrations:
     sourceUrl: "file:./migrations"
     databaseUrl: "mongodb://127.0.0.1:27017/testMigration?connect=single"
+
+minio:
+  endpoint: 127.0.0.1:9000
+  accessKeyId: AKIAIOSFODNN7EXAMPLE
+  secretAccessKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
