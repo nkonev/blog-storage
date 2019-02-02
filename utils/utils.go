@@ -11,3 +11,5 @@ func HashPassword(password string) (string, error) {
 	}
 	return string(passwordHash), nil
 }
+
+// hello and die

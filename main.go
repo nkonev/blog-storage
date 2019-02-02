@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/gobuffalo/packr"
 	"github.com/nkonev/blog-store/handlers"
 	"github.com/spf13/viper"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -25,7 +23,7 @@ import (
 	"github.com/minio/minio-go"
 )
 
-func configureEcho() *echo.Echo {
+func configureEcho(fsh *handlers.FsHandler) *echo.Echo {
 	bodyLimit := viper.GetString("server.body.limit")
 
 	log.SetOutput(os.Stdout)
@@ -40,11 +38,11 @@ func configureEcho() *echo.Echo {
 	e.Use(middleware.Secure())
 	e.Use(middleware.BodyLimit(bodyLimit))
 
-	e.GET("/ls", handlers.LsHandler)
-	e.POST("/upload", handlers.UploadHandler)
-	e.GET("/download", handlers.DownloadHandler)
-	e.POST("/move", handlers.MoveHandler)
-	e.DELETE("/delete", handlers.DeleteHandler)
+	e.GET("/ls", fsh.LsHandler)
+	e.POST("/upload", fsh.UploadHandler)
+	e.GET("/download", fsh.DownloadHandler)
+	e.POST("/move", fsh.MoveHandler)
+	e.DELETE("/delete", fsh.DeleteHandler)
 
 	e.Pre(getStaticMiddleware(static))
 
@@ -104,17 +102,21 @@ func getAuthMiddleware(whitelist []regexp.Regexp) echo.MiddlewareFunc {
 func main() {
 	initViper()
 	container := dig.New()
+	container.Provide(configureMinio)
+	container.Provide(configureHandler)
 	container.Provide(configureEcho)
 	container.Provide(configureMigrate)
 
 	container.Invoke(runMigrate)
 
-	runMinio()
-
 	if echoErr := container.Invoke(runEcho); echoErr != nil {
 		log.Fatalf("Error during invoke echo: %v", echoErr)
 	}
 	log.Infof("Exit program")
+}
+
+func configureHandler(m *minio.Client) *handlers.FsHandler {
+	return &handlers.FsHandler{Minio: m}
 }
 
 func configureMigrate() *migrate.Migrate {
@@ -140,7 +142,7 @@ func runMigrate(m *migrate.Migrate) {
 	log.Info("Migration run successfully")
 }
 
-func runMinio() {
+func configureMinio() *minio.Client {
 	endpoint := viper.GetString("minio.endpoint")
 	accessKeyID := viper.GetString("minio.accessKeyId")
 	secretAccessKey := viper.GetString("minio.secretAccessKey")
@@ -152,41 +154,7 @@ func runMinio() {
 		log.Fatal(err)
 	}
 
-	// Make a new bucket called mymusic.
-	bucketName := "mymusic"
-	location := "us-east-1"
-
-	err = minioClient.MakeBucket(bucketName, location)
-	if err != nil {
-		// Check to see if we already own this bucket (which happens if you run this twice)
-		exists, err := minioClient.BucketExists(bucketName)
-		if err == nil && exists {
-			log.Printf("We already own %s", bucketName)
-		} else {
-			log.Fatal(err)
-		}
-	} else {
-		log.Printf("Successfully created %s", bucketName)
-	}
-
-	// Upload the zip file
-	objectName := "config.yml"
-	filePath := "./config-dev/config.yml"
-	contentType := "application/yml"
-
-	ba, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Panicf("Error during read file %v", filePath)
-	}
-	reader := bytes.NewReader(ba)
-
-	// Upload the zip file with FPutObject
-	n, err := minioClient.PutObject(bucketName, objectName, reader, int64(len(ba)), minio.PutObjectOptions{ContentType: contentType})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Printf("Successfully uploaded %s of size %d", objectName, n)
+	return minioClient
 }
 
 // rely on viper import and it's configured by
