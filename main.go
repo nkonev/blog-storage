@@ -19,8 +19,8 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/minio/minio-go"
+	packr_migrate "github.com/nkonev/blog-store/packr"
 )
 
 func configureEcho(fsh *handlers.FsHandler) *echo.Echo {
@@ -120,10 +120,15 @@ func configureHandler(m *minio.Client) *handlers.FsHandler {
 }
 
 func configureMigrate() *migrate.Migrate {
-	m, err := migrate.New(
-		viper.GetString("mongo.migrations.sourceUrl"),
-		viper.GetString("mongo.migrations.databaseUrl"),
-	)
+	box := packr.NewBox("./migrations")
+
+	d, err := packr_migrate.WithInstance(&box)
+	if err != nil {
+		log.Panicf("Error during create migrator driver: %v", err)
+	}
+
+	m, err := migrate.NewWithSourceInstance("packr", d, viper.GetString("mongo.migrations.databaseUrl"))
+
 	if err != nil {
 		log.Panicf("Error during create migrator", err)
 	}
@@ -136,7 +141,7 @@ func runMigrate(m *migrate.Migrate) {
 		if err.Error() == "no change" {
 			log.Info("Migration(s) already applied")
 		} else {
-			log.Panicf("Error during applying migrations", err)
+			log.Panicf("Error during applying migrations: %v", err)
 		}
 	}
 	log.Info("Migration run successfully")
