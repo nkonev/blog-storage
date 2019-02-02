@@ -102,22 +102,37 @@ func main() {
 	initViper()
 	container := dig.New()
 	container.Provide(configureEcho)
+	container.Provide(configureMigrate)
 
-	m, err := migrate.New(
-		"file:./migrations",
-		"mongodb://127.0.0.1:27017/testMigration?connect=single")
-	if err != nil {
-		log.Panicf("Error during create migrator", err)
-	}
-	err = m.Up()
-	if err != nil && err.Error() != "no change" {
-		log.Panicf("Error during applying migrations", err)
-	}
+	container.Invoke(runMigrate)
 
 	if echoErr := container.Invoke(runEcho); echoErr != nil {
 		log.Fatalf("Error during invoke echo: %v", echoErr)
 	}
 	log.Infof("Exit program")
+}
+
+func configureMigrate() *migrate.Migrate {
+	m, err := migrate.New(
+		viper.GetString("mongo.migrations.sourceUrl"),
+		viper.GetString("mongo.migrations.databaseUrl"),
+	)
+	if err != nil {
+		log.Panicf("Error during create migrator", err)
+	}
+	return m
+}
+
+func runMigrate(m *migrate.Migrate) {
+	err := m.Up()
+	if err != nil {
+		if err.Error() == "no change" {
+			log.Info("Migration(s) already applied")
+		} else {
+			log.Panicf("Error during applying migrations", err)
+		}
+	}
+	log.Info("Migration run successfully")
 }
 
 // rely on viper import and it's configured by
