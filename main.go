@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/gobuffalo/packr"
 	"github.com/nkonev/blog-store/handlers"
 	"github.com/spf13/viper"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -168,12 +170,18 @@ func runMinio() {
 	}
 
 	// Upload the zip file
-	objectName := "001_create_user.up.json"
-	filePath := "./migrations/001_create_user.up.json"
-	contentType := "application/json"
+	objectName := "config.yml"
+	filePath := "./config-dev/config.yml"
+	contentType := "application/yml"
+
+	ba, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Panicf("Error during read file %v", filePath)
+	}
+	reader := bytes.NewReader(ba)
 
 	// Upload the zip file with FPutObject
-	n, err := minioClient.FPutObject(bucketName, objectName, filePath, minio.PutObjectOptions{ContentType: contentType})
+	n, err := minioClient.PutObject(bucketName, objectName, reader, int64(len(ba)), minio.PutObjectOptions{ContentType: contentType})
 	if err != nil {
 		log.Fatal(err)
 	}
