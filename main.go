@@ -92,7 +92,7 @@ func stringsToRegexpArray(strings ...string) []regexp.Regexp {
 func getAuthMiddleware(whitelist []regexp.Regexp) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// TODO check auth
+			// TODO check auth - extract session auth cookie value and check it with blog
 			return next(c)
 		}
 	}
