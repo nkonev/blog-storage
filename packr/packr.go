@@ -32,7 +32,7 @@ func WithInstance(instance interface{}) (source.Driver, error) {
 	}
 	bx := instance.(*packr.Box)
 
-	bn := &Packr{
+	driver := &Packr{
 		box:        bx,
 		migrations: source.NewMigrations(),
 		path:       bx.Path,
@@ -46,12 +46,12 @@ func WithInstance(instance interface{}) (source.Driver, error) {
 			continue // ignore files that we can't parse
 		}
 
-		if !bn.migrations.Append(m) {
+		if !driver.migrations.Append(m) {
 			return nil, fmt.Errorf("unable to parse file %v", fi)
 		}
 	}
 
-	return bn, nil
+	return driver, nil
 }
 
 func (b *Packr) Close() error {
