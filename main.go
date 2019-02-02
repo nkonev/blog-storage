@@ -127,7 +127,7 @@ func configureMigrate() *migrate.Migrate {
 		log.Panicf("Error during create migrator driver: %v", err)
 	}
 
-	m, err := migrate.NewWithSourceInstance("packr", d, viper.GetString("mongo.migrations.databaseUrl"))
+	m, err := migrate.NewWithSourceInstance(packr_migrate.PackrName, d, viper.GetString("mongo.migrations.databaseUrl"))
 
 	if err != nil {
 		log.Panicf("Error during create migrator", err)
