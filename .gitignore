@@ -1,0 +1,6 @@
+!.gitignore
+build
+.project
+.idea
+*.iml
+vendor
