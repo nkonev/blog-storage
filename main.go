@@ -16,6 +16,10 @@ import (
 	"github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
 	"go.uber.org/dig"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 func configureEcho() *echo.Echo {
@@ -85,7 +89,6 @@ func stringsToRegexpArray(strings ...string) []regexp.Regexp {
 	return regexps
 }
 
-
 func getAuthMiddleware(whitelist []regexp.Regexp) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -95,12 +98,21 @@ func getAuthMiddleware(whitelist []regexp.Regexp) echo.MiddlewareFunc {
 	}
 }
 
-
 func main() {
 	initViper()
 	container := dig.New()
 	container.Provide(configureEcho)
 
+	m, err := migrate.New(
+		"file:./migrations",
+		"mongodb://127.0.0.1:27017/testMigration?connect=single")
+	if err != nil {
+		log.Panicf("Error during create migrator", err)
+	}
+	err = m.Up()
+	if err != nil && err.Error() != "no change" {
+		log.Panicf("Error during applying migrations", err)
+	}
 
 	if echoErr := container.Invoke(runEcho); echoErr != nil {
 		log.Fatalf("Error during invoke echo: %v", echoErr)

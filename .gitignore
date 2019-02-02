@@ -4,3 +4,4 @@ build
 .idea
 *.iml
 vendor
+.vendor-new
