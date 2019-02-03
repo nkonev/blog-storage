@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/x/network/connstring"
 	"github.com/nkonev/blog-store/handlers"
+	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/dig"
 	"io"
@@ -16,7 +17,6 @@ import (
 	"net/http"
 	test "net/http/httptest"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -187,14 +187,14 @@ func TestUploadDownload(t *testing.T) {
 
 	runTest(container, func(e *echo.Echo) {
 		path := "docker-compose.yml"
-
+		fileName := "docker-compose_" + uuid.NewV4().String() + ".yml"
 		{
 			dat, err := ioutil.ReadFile(path)
 			if err != nil {
 				log.Panicf("Error during reading file")
 			}
 
-			body, contentType := getMultipart(dat, filepath.Base(path))
+			body, contentType := getMultipart(dat, fileName)
 
 			req := test.NewRequest("POST", "/upload", body)
 			headers := map[string][]string{
@@ -211,7 +211,7 @@ func TestUploadDownload(t *testing.T) {
 		}
 
 		{
-			req := test.NewRequest("GET", "/download/"+path, nil)
+			req := test.NewRequest("GET", "/download/"+fileName, nil)
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
