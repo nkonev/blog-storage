@@ -161,20 +161,16 @@ func TestStaticAssets(t *testing.T) {
 	})
 }
 
-func getMultipart(path string) (*bytes.Buffer, string) {
-	dat, err := ioutil.ReadFile(path)
-	if err != nil {
-		log.Panicf("Error during reading file")
-	}
+func getMultipart(bytea []byte, filename string) (*bytes.Buffer, string) {
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile(handlers.FormFile, filepath.Base(path))
+	part, err := writer.CreateFormFile(handlers.FormFile, filename)
 	if err != nil {
 		log.Panicf("Error during creating form file")
 	}
 
-	_, err = io.Copy(part, bytes.NewReader(dat))
+	_, err = io.Copy(part, bytes.NewReader(bytea))
 	if err != nil {
 		log.Panicf("Error during copy")
 	}
@@ -193,7 +189,12 @@ func TestUploadDownload(t *testing.T) {
 		path := "docker-compose.yml"
 
 		{
-			body, contentType := getMultipart(path)
+			dat, err := ioutil.ReadFile(path)
+			if err != nil {
+				log.Panicf("Error during reading file")
+			}
+
+			body, contentType := getMultipart(dat, filepath.Base(path))
 
 			req := test.NewRequest("POST", "/upload", body)
 			headers := map[string][]string{
