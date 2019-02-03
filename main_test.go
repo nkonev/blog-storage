@@ -51,9 +51,9 @@ func setup() {
 
 	err = client.Database(uri.Database).Drop(context.Background())
 	if err != nil {
-		log.Panicf("Error during dropping database: %v", err)
+		log.Panicf("Error during dropping database: '%v'", err)
 	}
-	log.Infof("Mongo database %v successfully dropped", uri.Database)
+	log.Infof("Mongo database '%v' successfully dropped", uri.Database)
 
 	mc := configureMinio()
 	infos, err := mc.ListBuckets()
@@ -61,9 +61,23 @@ func setup() {
 		log.Panicf("Error during listing buckets: %v", err)
 	}
 	for _, b := range infos {
+		// Create a done channel.
+		doneCh := make(chan struct{})
+		defer close(doneCh)
+		// Recurively list all objects in 'mytestbucket'
+		recursive := true
+		log.Infof("Listing bucket '%v':", b.Name)
+		for objInfo := range mc.ListObjects(b.Name, "", recursive, doneCh) {
+			log.Infof("Object '%v'", objInfo.Key)
+			err := mc.RemoveObject(b.Name, objInfo.Key)
+			if err != nil {
+				log.Panicf("Error during dropping object %v: %v", objInfo.Key, err)
+			}
+		}
+
 		err := mc.RemoveBucket(b.Name)
 		if err != nil {
-			log.Errorf("Error during dropping bucket %v: %v", b.Name, err)
+			log.Panicf("Error during dropping bucket %v: %v", b.Name, err)
 		}
 	}
 }
