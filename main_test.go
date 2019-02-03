@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/log"
@@ -9,9 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/dig"
 	"io"
+	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	test "net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -126,5 +130,42 @@ func TestStaticAssets(t *testing.T) {
 		c, b, _ := request("GET", "/test-assets/main.js", nil, e, "")
 		assert.Equal(t, http.StatusOK, c)
 		assert.Equal(t, `console.log("Hello world");`, b)
+	})
+}
+
+func TestUploadDownload(t *testing.T) {
+	container := setUpContainerForIntegrationTests()
+
+	runTest(container, func(e *echo.Echo) {
+		path := "./docker-compose.yml"
+		dat, err := ioutil.ReadFile(path)
+		if err != nil {
+			log.Panicf("Error during reading file")
+		}
+
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		part, err := writer.CreateFormFile("file", filepath.Base(path))
+		if err != nil {
+			log.Panicf("Error during creating form file")
+		}
+
+		_, err = io.Copy(part, bytes.NewReader(dat))
+		if err != nil {
+			log.Panicf("Error during copy")
+		}
+
+		req := test.NewRequest("POST", "/upload", body)
+		headers := map[string][]string{
+			echo.HeaderContentType: {writer.FormDataContentType()},
+			echo.HeaderCookie:      []string{},
+		}
+		req.Header = headers
+		rec := test.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.NotEmpty(t, rec.Body.String())
+		log.Infof("Got body: %v", rec.Body.String())
 	})
 }

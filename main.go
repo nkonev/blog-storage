@@ -40,7 +40,7 @@ func configureEcho(fsh *handlers.FsHandler) *echo.Echo {
 
 	e.GET("/ls", fsh.LsHandler)
 	e.POST("/upload", fsh.UploadHandler)
-	e.GET("/download", fsh.DownloadHandler)
+	e.GET("/download/:file", fsh.DownloadHandler)
 	e.POST("/move", fsh.MoveHandler)
 	e.DELETE("/delete", fsh.DeleteHandler)
 
@@ -116,7 +116,7 @@ func main() {
 }
 
 func configureHandler(m *minio.Client) *handlers.FsHandler {
-	return &handlers.FsHandler{Minio: m}
+	return handlers.NewFsHandler(m)
 }
 
 func configureMigrate() *migrate.Migrate {
