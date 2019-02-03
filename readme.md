@@ -12,5 +12,5 @@ go build
 ```
 
 ```
-curl -v -F 'file=@/home/nkonev/blog-store/utils/utils.go' http://127.0.0.1:1234/upload
+curl -v -F 'file=@./utils/utils.go' http://127.0.0.1:1234/upload
 ```

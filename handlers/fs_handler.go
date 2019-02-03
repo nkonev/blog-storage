@@ -20,10 +20,13 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok"})
 }
 
+const FormFile = "file"
+
 func (h *FsHandler) UploadHandler(c echo.Context) error {
 
-	file, err := c.FormFile("file")
+	file, err := c.FormFile(FormFile)
 	if err != nil {
+		log.Errorf("Error during extracting form %v parameter", FormFile)
 		return err
 	}
 	src, err := file.Open()

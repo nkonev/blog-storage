@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/gommon/log"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/x/network/connstring"
+	"github.com/nkonev/blog-store/handlers"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/dig"
 	"io"
@@ -145,7 +146,7 @@ func TestUploadDownload(t *testing.T) {
 
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
-		part, err := writer.CreateFormFile("file", filepath.Base(path))
+		part, err := writer.CreateFormFile(handlers.FormFile, filepath.Base(path))
 		if err != nil {
 			log.Panicf("Error during creating form file")
 		}
@@ -153,6 +154,11 @@ func TestUploadDownload(t *testing.T) {
 		_, err = io.Copy(part, bytes.NewReader(dat))
 		if err != nil {
 			log.Panicf("Error during copy")
+		}
+
+		err = writer.Close()
+		if err != nil {
+			log.Panicf("Error during closing writer")
 		}
 
 		req := test.NewRequest("POST", "/upload", body)
