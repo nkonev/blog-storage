@@ -130,7 +130,7 @@ func configureMigrate() *migrate.Migrate {
 	m, err := migrate.NewWithSourceInstance(packr_migrate.PackrName, d, viper.GetString("mongo.migrations.databaseUrl"))
 
 	if err != nil {
-		log.Panicf("Error during create migrator", err)
+		log.Panicf("Error during create migrator: %v", err)
 	}
 	return m
 }

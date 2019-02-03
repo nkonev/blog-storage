@@ -2,21 +2,20 @@ package main
 
 import (
 	"github.com/labstack/echo"
+	"github.com/labstack/gommon/log"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/dig"
+	"io"
+	"net/http"
 	test "net/http/httptest"
 	"testing"
-	"github.com/stretchr/testify/assert"
-	"net/http"
-	"io"
-	"go.uber.org/dig"
-	"github.com/labstack/gommon/log"
 )
-
 
 func request(method, path string, body io.Reader, e *echo.Echo, sessionCookie string) (int, string, http.Header) {
 	req := test.NewRequest(method, path, body)
 	Header := map[string][]string{
 		echo.HeaderContentType: {"application/json"},
-		echo.HeaderCookie: []string{},
+		echo.HeaderCookie:      []string{},
 	}
 	req.Header = Header
 	rec := test.NewRecorder()
@@ -24,11 +23,9 @@ func request(method, path string, body io.Reader, e *echo.Echo, sessionCookie st
 	return rec.Code, rec.Body.String(), rec.HeaderMap
 }
 
+func runTest(container *dig.Container, test func(e *echo.Echo)) {
 
-
-func runTest(container *dig.Container, test func (e *echo.Echo)){
-
-	if err := container.Invoke(func (e *echo.Echo){
+	if err := container.Invoke(func(e *echo.Echo) {
 		defer e.Close()
 
 		test(e)
@@ -40,7 +37,12 @@ func runTest(container *dig.Container, test func (e *echo.Echo)){
 func setUpContainerForIntegrationTests() *dig.Container {
 	initViper()
 	container := dig.New()
+	container.Provide(configureMinio)
+	container.Provide(configureHandler)
 	container.Provide(configureEcho)
+	container.Provide(configureMigrate)
+
+	container.Invoke(runMigrate)
 
 	return container
 }
@@ -48,7 +50,7 @@ func setUpContainerForIntegrationTests() *dig.Container {
 func TestLs(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
 
-	runTest(container, func (e *echo.Echo){
+	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/ls", nil, e, "")
 		assert.Equal(t, http.StatusOK, c)
 		assert.NotEmpty(t, b)
@@ -56,12 +58,11 @@ func TestLs(t *testing.T) {
 	})
 }
 
-
 func TestStaticIndex(t *testing.T) {
 
 	container := setUpContainerForIntegrationTests()
 
-	runTest(container, func (e *echo.Echo){
+	runTest(container, func(e *echo.Echo) {
 		c, _, _ := request("GET", "/index.html", nil, e, "")
 		assert.Equal(t, http.StatusMovedPermanently, c)
 	})
@@ -71,23 +72,20 @@ func TestStaticRoot(t *testing.T) {
 
 	container := setUpContainerForIntegrationTests()
 
-	runTest(container, func (e *echo.Echo){
+	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/", nil, e, "")
 		assert.Equal(t, http.StatusOK, c)
 		assert.Contains(t, b, "app-container")
 	})
 }
 
-
 func TestStaticAssets(t *testing.T) {
 
 	container := setUpContainerForIntegrationTests()
 
-	runTest(container, func (e *echo.Echo){
+	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/test-assets/main.js", nil, e, "")
 		assert.Equal(t, http.StatusOK, c)
 		assert.Equal(t, `console.log("Hello world");`, b)
 	})
 }
-
-
