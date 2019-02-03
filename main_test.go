@@ -17,6 +17,7 @@ import (
 	test "net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -189,21 +190,34 @@ func TestUploadDownload(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
 
 	runTest(container, func(e *echo.Echo) {
-		path := "./docker-compose.yml"
+		path := "docker-compose.yml"
 
-		body, contentType := getMultipart(path)
+		{
+			body, contentType := getMultipart(path)
 
-		req := test.NewRequest("POST", "/upload", body)
-		headers := map[string][]string{
-			echo.HeaderContentType: {contentType},
-			echo.HeaderCookie:      []string{},
+			req := test.NewRequest("POST", "/upload", body)
+			headers := map[string][]string{
+				echo.HeaderContentType: {contentType},
+				echo.HeaderCookie:      []string{},
+			}
+			req.Header = headers
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
 		}
-		req.Header = headers
-		rec := test.NewRecorder()
-		e.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.NotEmpty(t, rec.Body.String())
-		log.Infof("Got body: %v", rec.Body.String())
+		{
+			req := test.NewRequest("GET", "/download/"+path, nil)
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
+		}
 	})
 }
