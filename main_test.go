@@ -134,36 +134,42 @@ func TestStaticAssets(t *testing.T) {
 	})
 }
 
+func getMultipart(path string) (*bytes.Buffer, string) {
+	dat, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Panicf("Error during reading file")
+	}
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(handlers.FormFile, filepath.Base(path))
+	if err != nil {
+		log.Panicf("Error during creating form file")
+	}
+
+	_, err = io.Copy(part, bytes.NewReader(dat))
+	if err != nil {
+		log.Panicf("Error during copy")
+	}
+
+	err = writer.Close()
+	if err != nil {
+		log.Panicf("Error during closing writer")
+	}
+	return body, writer.FormDataContentType()
+}
+
 func TestUploadDownload(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
 
 	runTest(container, func(e *echo.Echo) {
 		path := "./docker-compose.yml"
-		dat, err := ioutil.ReadFile(path)
-		if err != nil {
-			log.Panicf("Error during reading file")
-		}
 
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		part, err := writer.CreateFormFile(handlers.FormFile, filepath.Base(path))
-		if err != nil {
-			log.Panicf("Error during creating form file")
-		}
-
-		_, err = io.Copy(part, bytes.NewReader(dat))
-		if err != nil {
-			log.Panicf("Error during copy")
-		}
-
-		err = writer.Close()
-		if err != nil {
-			log.Panicf("Error during closing writer")
-		}
+		body, contentType := getMultipart(path)
 
 		req := test.NewRequest("POST", "/upload", body)
 		headers := map[string][]string{
-			echo.HeaderContentType: {writer.FormDataContentType()},
+			echo.HeaderContentType: {contentType},
 			echo.HeaderCookie:      []string{},
 		}
 		req.Header = headers
