@@ -1,15 +1,55 @@
 package main
 
 import (
+	"context"
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/log"
+	"github.com/mongodb/mongo-go-driver/mongo"
+	"github.com/mongodb/mongo-go-driver/x/network/connstring"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/dig"
 	"io"
 	"net/http"
 	test "net/http/httptest"
+	"os"
 	"testing"
+	"time"
 )
+
+func TestMain(m *testing.M) {
+	setup()
+	retCode := m.Run()
+	shutdown()
+	os.Exit(retCode)
+}
+
+func shutdown() {
+	log.Info("Shutting down")
+}
+
+func setup() {
+	initViper()
+
+	log.Info("Set up")
+	mongoUrl := getMongoUrl()
+	client, err := mongo.NewClient(mongoUrl)
+	if err != nil {
+		log.Panicf("Error during create mongo client: %v", err)
+	}
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	err = client.Connect(ctx)
+	if err != nil {
+		log.Panicf("Error during connect: %v", err)
+	}
+
+	uri, err := connstring.Parse(mongoUrl)
+
+	err = client.Database(uri.Database).Drop(context.Background())
+	if err != nil {
+		log.Panicf("Error during dropping database: %v", err)
+	}
+	log.Infof("Mongo database %v successfully dropped", uri.Database)
+}
 
 func request(method, path string, body io.Reader, e *echo.Echo, sessionCookie string) (int, string, http.Header) {
 	req := test.NewRequest(method, path, body)
@@ -35,7 +75,6 @@ func runTest(container *dig.Container, test func(e *echo.Echo)) {
 }
 
 func setUpContainerForIntegrationTests() *dig.Container {
-	initViper()
 	container := dig.New()
 	container.Provide(configureMinio)
 	container.Provide(configureHandler)
