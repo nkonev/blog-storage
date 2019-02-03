@@ -54,6 +54,18 @@ func setup() {
 		log.Panicf("Error during dropping database: %v", err)
 	}
 	log.Infof("Mongo database %v successfully dropped", uri.Database)
+
+	mc := configureMinio()
+	infos, err := mc.ListBuckets()
+	if err != nil {
+		log.Panicf("Error during listing buckets: %v", err)
+	}
+	for _, b := range infos {
+		err := mc.RemoveBucket(b.Name)
+		if err != nil {
+			log.Errorf("Error during dropping bucket %v: %v", b.Name, err)
+		}
+	}
 }
 
 func request(method, path string, body io.Reader, e *echo.Echo, sessionCookie string) (int, string, http.Header) {
