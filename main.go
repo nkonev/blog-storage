@@ -41,7 +41,7 @@ func configureEcho(fsh *handlers.FsHandler) *echo.Echo {
 	e.GET("/ls", fsh.LsHandler)
 	e.POST("/upload", fsh.UploadHandler)
 	e.GET("/download/:file", fsh.DownloadHandler)
-	e.POST("/move", fsh.MoveHandler)
+	e.POST("/move/:from/:to", fsh.MoveHandler)
 	e.DELETE("/delete/:file", fsh.DeleteHandler)
 
 	e.Pre(getStaticMiddleware(static))

@@ -110,11 +110,10 @@ func (h *FsHandler) DownloadHandler(c echo.Context) error {
 	}
 
 	object, e := h.minio.GetObject(bucketName, objName, minio.GetObjectOptions{})
+	defer object.Close()
 	if e != nil {
 		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
 	}
-
-	defer object.Close()
 
 	return c.Stream(http.StatusOK, info.ContentType, object)
 }
@@ -124,6 +123,28 @@ func getFileName(context echo.Context) string {
 }
 
 func (h *FsHandler) MoveHandler(c echo.Context) error {
+	from := c.Param("from")
+	to := c.Param("to")
+	// TODO make vfs in mongo
+	bucketName := h.ensureAndGetBucket(c)
+
+	info, e := h.minio.StatObject(bucketName, from, minio.StatObjectOptions{})
+	if e != nil {
+		return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
+	}
+
+	object, err := h.minio.GetObject(bucketName, from, minio.GetObjectOptions{})
+	defer object.Close()
+	if err != nil {
+		log.Errorf("Error during get object: %v", err)
+		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
+	}
+
+	if _, err := h.minio.PutObject(bucketName, to, object, info.Size, minio.PutObjectOptions{ContentType: info.ContentType}); err != nil {
+		log.Errorf("Error during copy object: %v", err)
+		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
+	}
+
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok"})
 }
 

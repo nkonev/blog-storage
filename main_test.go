@@ -304,3 +304,53 @@ func TestUploadDownloadDelete(t *testing.T) {
 		}
 	})
 }
+
+func TestUploadMove(t *testing.T) {
+	container := setUpContainerForIntegrationTests()
+
+	runTest(container, func(e *echo.Echo) {
+		path := "docker-compose.yml"
+		oldFileName := "pre_mv_" + uuid.NewV4().String() + ".yml"
+		fileNameNew := "mv_" + uuid.NewV4().String() + ".yml"
+		{
+			dat := getBytea(path)
+
+			body, contentType := getMultipart(dat, oldFileName)
+
+			req := test.NewRequest("POST", "/upload", body)
+			headers := map[string][]string{
+				echo.HeaderContentType: {contentType},
+				echo.HeaderCookie:      []string{},
+			}
+			req.Header = headers
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+		}
+
+		{
+			req := test.NewRequest("POST", "/move/"+oldFileName+"/"+fileNameNew, nil)
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+		}
+
+		{
+			req := test.NewRequest("GET", "/download/"+fileNameNew, nil)
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
+		}
+
+	})
+}
