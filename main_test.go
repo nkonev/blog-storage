@@ -192,44 +192,6 @@ func getBytea(path string) []byte {
 	return dat
 }
 
-func TestUploadDownload(t *testing.T) {
-	container := setUpContainerForIntegrationTests()
-
-	runTest(container, func(e *echo.Echo) {
-		path := "docker-compose.yml"
-		fileName := "docker-compose_" + uuid.NewV4().String() + ".yml"
-		{
-			dat := getBytea(path)
-
-			body, contentType := getMultipart(dat, fileName)
-
-			req := test.NewRequest("POST", "/upload", body)
-			headers := map[string][]string{
-				echo.HeaderContentType: {contentType},
-				echo.HeaderCookie:      []string{},
-			}
-			req.Header = headers
-			rec := test.NewRecorder()
-			e.ServeHTTP(rec, req)
-
-			assert.Equal(t, http.StatusOK, rec.Code)
-			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
-		}
-
-		{
-			req := test.NewRequest("GET", "/download/"+fileName, nil)
-			rec := test.NewRecorder()
-			e.ServeHTTP(rec, req)
-
-			assert.Equal(t, http.StatusOK, rec.Code)
-			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
-			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
-		}
-	})
-}
-
 func TestUploadLs(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
 
@@ -264,15 +226,81 @@ func TestUploadLs(t *testing.T) {
 			assert.NotEmpty(t, rec.Body.String())
 			log.Infof("Got body: %v", rec.Body.String())
 
-			var json_data interface{}
-			json.Unmarshal([]byte(rec.Body.String()), &json_data)
-
-			res, err := jsonpath.JsonPathLookup(json_data, "$.files[?(@.filename =~ /(?i).*ls.*/)].filename")
-			if err != nil {
-				log.Panicf("Error during requesting jsonpath: %v", err)
-			}
-			var arr = res.([]interface{})
+			var arr = jsonPathHelper(rec.Body.String(), "$.files[?(@.filename =~ /(?i).*ls.*/)].filename").([]interface{})
 			assert.Equal(t, fileName, arr[0])
+		}
+	})
+}
+
+func jsonPathHelper(in, jsonPath string) interface{} {
+	var jsonData interface{}
+	err := json.Unmarshal([]byte(in), &jsonData)
+	if err != nil {
+		log.Panicf("Error during unmarshall: %v", err)
+	}
+
+	res, err := jsonpath.JsonPathLookup(jsonData, jsonPath)
+	if err != nil {
+		log.Panicf("Error during requesting jsonpath: %v", err)
+	}
+	return res
+}
+
+func TestUploadDownloadDelete(t *testing.T) {
+	container := setUpContainerForIntegrationTests()
+
+	runTest(container, func(e *echo.Echo) {
+		path := "docker-compose.yml"
+		fileName := "del_" + uuid.NewV4().String() + ".yml"
+		{
+			dat := getBytea(path)
+
+			body, contentType := getMultipart(dat, fileName)
+
+			req := test.NewRequest("POST", "/upload", body)
+			headers := map[string][]string{
+				echo.HeaderContentType: {contentType},
+				echo.HeaderCookie:      []string{},
+			}
+			req.Header = headers
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+		}
+
+		{
+			req := test.NewRequest("GET", "/download/"+fileName, nil)
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
+		}
+
+		{
+			req := test.NewRequest("DELETE", "/delete/"+fileName, nil)
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+		}
+
+		{
+			req := test.NewRequest("GET", "/download/"+fileName, nil)
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			var str = jsonPathHelper(rec.Body.String(), "$.status").(string)
+			assert.Equal(t, "stat fail", str)
 		}
 	})
 }

@@ -61,6 +61,7 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 	log.Infof("Determined content type: %v", contentType)
 
 	if _, err := h.minio.PutObject(bucketName, file.Filename, src, file.Size, minio.PutObjectOptions{ContentType: contentType}); err != nil {
+		log.Errorf("Error during upload object: %v", err)
 		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
 	}
 
@@ -105,7 +106,7 @@ func (h *FsHandler) DownloadHandler(c echo.Context) error {
 
 	info, e := h.minio.StatObject(bucketName, objName, minio.StatObjectOptions{})
 	if e != nil {
-		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "stat fail"})
+		return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
 	}
 
 	object, e := h.minio.GetObject(bucketName, objName, minio.GetObjectOptions{})
@@ -127,5 +128,11 @@ func (h *FsHandler) MoveHandler(c echo.Context) error {
 }
 
 func (h *FsHandler) DeleteHandler(c echo.Context) error {
+	bucketName := h.ensureAndGetBucket(c)
+	objName := getFileName(c)
+	if err := h.minio.RemoveObject(bucketName, objName); err != nil {
+		log.Errorf("Error during remove object: %v", err)
+		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
+	}
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok"})
 }
