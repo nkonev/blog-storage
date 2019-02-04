@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/gobuffalo/packr"
 	"github.com/nkonev/blog-store/handlers"
@@ -11,6 +12,7 @@ import (
 	"os/signal"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -90,10 +92,66 @@ func stringsToRegexpArray(strings ...string) []regexp.Regexp {
 	return regexps
 }
 
+func checkUrlInWhitelist(whitelist []regexp.Regexp, uri string) bool {
+	for _, regexp0 := range whitelist {
+		if regexp0.MatchString(uri) {
+			log.Infof("Skipping authentication for %v because it matches %v", uri, regexp0.String())
+			return true
+		}
+	}
+	return false
+}
+
+const SESSION_COOKIE = "SESSION";
+
+
 func getAuthMiddleware(whitelist []regexp.Regexp) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// TODO check auth - extract session auth cookie value and check it with blog
+			if checkUrlInWhitelist(whitelist, c.Request().RequestURI){
+				return next(c)
+			}
+
+			co, err := c.Request().Cookie(SESSION_COOKIE)
+			if err != nil {
+				log.Errorf("Error get '%v' cookie: %v", SESSION_COOKIE, err)
+				return err
+			}
+
+			// check cookie
+			// todo make bean http.Transport
+			tr := &http.Transport{
+				MaxIdleConns:       10,
+				IdleConnTimeout:    30 * time.Second,
+				DisableCompression: true,
+			}
+			client := &http.Client{Transport: tr}
+
+			req, err := http.NewRequest(
+				"GET", "http://127.0.0.1:8080/api/profile", nil,
+			)
+			if err != nil {
+				log.Errorf("Error during create request: %v", err)
+				return err
+			}
+
+			req.AddCookie(co)
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Errorf("Error during requesting auth backend: %v", err)
+				return err
+			}
+			defer resp.Body.Close()
+
+			// put user id, user name to context
+			decoder := json.NewDecoder(resp.Body)
+			var decodedResponse interface{}
+			err = decoder.Decode(decodedResponse)
+			if err != nil {
+				log.Errorf("Error during decoding json: %v", err)
+				return err
+			}
+
 			return next(c)
 		}
 	}
