@@ -16,8 +16,27 @@ type FsHandler struct {
 	minio *minio.Client
 }
 
+type FileInfo struct {
+	Filename string `json:"filename"`
+}
+
 func (h *FsHandler) LsHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, &utils.H{"status": "ok"})
+	bucket := h.ensureAndGetBucket(c)
+	// Create a done channel.
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+	// Recurively list all objects in 'mytestbucket'
+	recursive := true
+	log.Infof("Listing bucket '%v':", bucket)
+
+	var buffer []FileInfo
+	for objInfo := range h.minio.ListObjects(bucket, "", recursive, doneCh) {
+		log.Infof("Object '%v'", objInfo.Key)
+
+		buffer = append(buffer, FileInfo{Filename: objInfo.Key})
+	}
+
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "files": buffer})
 }
 
 const FormFile = "file"

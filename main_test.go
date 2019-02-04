@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/log"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/x/network/connstring"
 	"github.com/nkonev/blog-store/handlers"
+	"github.com/oliveagle/jsonpath"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/dig"
@@ -182,6 +184,14 @@ func getMultipart(bytea []byte, filename string) (*bytes.Buffer, string) {
 	return body, writer.FormDataContentType()
 }
 
+func getBytea(path string) []byte {
+	dat, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Panicf("Error during reading file")
+	}
+	return dat
+}
+
 func TestUploadDownload(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
 
@@ -189,10 +199,7 @@ func TestUploadDownload(t *testing.T) {
 		path := "docker-compose.yml"
 		fileName := "docker-compose_" + uuid.NewV4().String() + ".yml"
 		{
-			dat, err := ioutil.ReadFile(path)
-			if err != nil {
-				log.Panicf("Error during reading file")
-			}
+			dat := getBytea(path)
 
 			body, contentType := getMultipart(dat, fileName)
 
@@ -219,6 +226,53 @@ func TestUploadDownload(t *testing.T) {
 			assert.NotEmpty(t, rec.Body.String())
 			log.Infof("Got body: %v", rec.Body.String())
 			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
+		}
+	})
+}
+
+func TestUploadLs(t *testing.T) {
+	container := setUpContainerForIntegrationTests()
+
+	runTest(container, func(e *echo.Echo) {
+		path := "docker-compose.yml"
+		fileName := "ls_" + uuid.NewV4().String() + ".yml"
+		{
+			dat := getBytea(path)
+
+			body, contentType := getMultipart(dat, fileName)
+
+			req := test.NewRequest("POST", "/upload", body)
+			headers := map[string][]string{
+				echo.HeaderContentType: {contentType},
+				echo.HeaderCookie:      []string{},
+			}
+			req.Header = headers
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+		}
+
+		{
+			req := test.NewRequest("GET", "/ls", nil)
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+
+			var json_data interface{}
+			json.Unmarshal([]byte(rec.Body.String()), &json_data)
+
+			res, err := jsonpath.JsonPathLookup(json_data, "$.files[?(@.filename =~ /(?i).*ls.*/)].filename")
+			if err != nil {
+				log.Panicf("Error during requesting jsonpath: %v", err)
+			}
+			var arr = res.([]interface{})
+			assert.Equal(t, fileName, arr[0])
 		}
 	})
 }
