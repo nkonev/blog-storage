@@ -106,12 +106,6 @@ func configureAuthMiddleware(httpClient *http.Client) echo.MiddlewareFunc {
 				return err
 			}
 
-			xsrfCookie, err := c.Request().Cookie(XSRF_TOKEN)
-			if err != nil {
-				log.Errorf("Error get '%v' cookie: %v", XSRF_TOKEN, err)
-				return err
-			}
-
 			// check cookie
 			req, err := http.NewRequest(
 				"GET", "http://127.0.0.1:8080/api/profile", nil,
@@ -122,7 +116,6 @@ func configureAuthMiddleware(httpClient *http.Client) echo.MiddlewareFunc {
 			}
 
 			req.AddCookie(sessionCookie)
-			req.AddCookie(xsrfCookie)
 			req.Header.Add("Accept", "application/json")
 			resp, err := httpClient.Do(req)
 			if err != nil {
