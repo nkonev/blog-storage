@@ -28,12 +28,11 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 	// Create a done channel.
 	doneCh := make(chan struct{})
 	defer close(doneCh)
-	// Recurively list all objects in 'mytestbucket'
-	recursive := true
+
 	log.Infof("Listing bucket '%v':", bucket)
 
 	var buffer []FileInfo = make([]FileInfo, 0)
-	for objInfo := range h.minio.ListObjects(bucket, "", recursive, doneCh) {
+	for objInfo := range h.minio.ListObjects(bucket, "", false, doneCh) {
 		log.Infof("Object '%v'", objInfo.Key)
 
 		buffer = append(buffer, FileInfo{Filename: objInfo.Key})
