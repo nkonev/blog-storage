@@ -89,7 +89,6 @@ func checkUrlInWhitelist(whitelist []regexp.Regexp, uri string) bool {
 }
 
 const SESSION_COOKIE = "SESSION"
-const XSRF_TOKEN = "XSRF-TOKEN"
 
 func configureAuthMiddleware(httpClient *http.Client) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -137,6 +136,14 @@ func configureAuthMiddleware(httpClient *http.Client) echo.MiddlewareFunc {
 			if resp.StatusCode == 401 {
 				return c.JSON(resp.StatusCode, &utils.H{"status": "unauthorized"})
 			} else if resp.StatusCode == 200 {
+				dto := decodedResponse.(map[string]interface{})
+				i, ok := dto["id"].(float64)
+				if !ok {
+					log.Errorf("Error during casting to int")
+					return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
+				}
+				c.Set(utils.USER_ID, int(i))
+				c.Set(utils.USER_LOGIN, dto["login"])
 				return next(c)
 			} else {
 				log.Errorf("Unknown auth status %v", resp.StatusCode)

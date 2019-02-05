@@ -27,3 +27,6 @@ func StringsToRegexpArray(strings []string) []regexp.Regexp {
 	}
 	return regexps
 }
+
+const USER_ID = "iserId"
+const USER_LOGIN = "userLogin"

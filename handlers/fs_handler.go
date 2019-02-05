@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/log"
 	"github.com/minio/minio-go"
@@ -21,6 +22,8 @@ type FileInfo struct {
 }
 
 func (h *FsHandler) LsHandler(c echo.Context) error {
+	log.Infof("Get userId: %v; userLogin: %v", c.Get(utils.USER_ID), c.Get(utils.USER_LOGIN))
+
 	bucket := h.ensureAndGetBucket(c)
 	// Create a done channel.
 	doneCh := make(chan struct{})
@@ -69,7 +72,11 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 }
 
 func getBucketName(c echo.Context) string {
-	return "temporary-todo"
+	i, ok := c.Get(utils.USER_ID).(int)
+	if !ok {
+		log.Errorf("Error during get(cast) userId")
+	}
+	return fmt.Sprintf("user%v", i)
 }
 
 func getBucketLocation(c echo.Context) string {
