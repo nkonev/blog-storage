@@ -89,6 +89,7 @@ func checkUrlInWhitelist(whitelist []regexp.Regexp, uri string) bool {
 }
 
 const SESSION_COOKIE = "SESSION"
+const XSRF_TOKEN = "XSRF-TOKEN"
 
 func configureAuthMiddleware(httpClient *http.Client) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -99,9 +100,15 @@ func configureAuthMiddleware(httpClient *http.Client) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			co, err := c.Request().Cookie(SESSION_COOKIE)
+			sessionCookie, err := c.Request().Cookie(SESSION_COOKIE)
 			if err != nil {
 				log.Errorf("Error get '%v' cookie: %v", SESSION_COOKIE, err)
+				return err
+			}
+
+			xsrfCookie, err := c.Request().Cookie(XSRF_TOKEN)
+			if err != nil {
+				log.Errorf("Error get '%v' cookie: %v", XSRF_TOKEN, err)
 				return err
 			}
 
@@ -114,7 +121,9 @@ func configureAuthMiddleware(httpClient *http.Client) echo.MiddlewareFunc {
 				return err
 			}
 
-			req.AddCookie(co)
+			req.AddCookie(sessionCookie)
+			req.AddCookie(xsrfCookie)
+			req.Header.Add("Accept", "application/json")
 			resp, err := httpClient.Do(req)
 			if err != nil {
 				log.Errorf("Error during requesting auth backend: %v", err)
@@ -123,15 +132,24 @@ func configureAuthMiddleware(httpClient *http.Client) echo.MiddlewareFunc {
 			defer resp.Body.Close()
 
 			// put user id, user name to context
-			decoder := json.NewDecoder(resp.Body)
+			b := resp.Body
+			decoder := json.NewDecoder(b)
 			var decodedResponse interface{}
-			err = decoder.Decode(decodedResponse)
+			err = decoder.Decode(&decodedResponse)
 			if err != nil {
 				log.Errorf("Error during decoding json: %v", err)
 				return err
 			}
 
-			return next(c)
+			if resp.StatusCode == 401 {
+				return c.JSON(resp.StatusCode, &utils.H{"status": "unauthorized"})
+			} else if resp.StatusCode == 200 {
+				return next(c)
+			} else {
+				log.Errorf("Unknown auth status %v", resp.StatusCode)
+				return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
+			}
+
 		}
 	}
 }

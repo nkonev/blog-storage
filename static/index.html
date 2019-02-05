@@ -11,9 +11,24 @@
     <link rel="stylesheet" href="/build/css/materialdesignicons.css">
 </head>
 <body>
-<div id="app-container"></div>
+<div id="app-container">
+    Loading
+</div>
 
 <script type="application/javascript" src="/build/vendor.js"></script>
 <script type="application/javascript" src="/build/main.js"></script>
+<script type="application/javascript">
+    window.onload = function(){
+        console.log(">>>>>>>>>>>>onload");
+        const Http = new XMLHttpRequest();
+        const url='/ls';
+        Http.open("GET", url);
+        Http.send();
+        Http.onreadystatechange=(e)=>{
+            console.log(">>>>>>>>>>>>got response");
+            console.log(Http.responseText)
+        }
+    }
+</script>
 </body>
 </html>

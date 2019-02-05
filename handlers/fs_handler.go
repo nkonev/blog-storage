@@ -29,7 +29,7 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 	recursive := true
 	log.Infof("Listing bucket '%v':", bucket)
 
-	var buffer []FileInfo
+	var buffer []FileInfo = make([]FileInfo, 0)
 	for objInfo := range h.minio.ListObjects(bucket, "", recursive, doneCh) {
 		log.Infof("Object '%v'", objInfo.Key)
 
