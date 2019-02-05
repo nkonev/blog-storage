@@ -20,13 +20,13 @@
 <script type="application/javascript">
     window.onload = function(){
         console.log(">>>>>>>>>>>>onload");
-        const Http = new XMLHttpRequest();
+        const http = new XMLHttpRequest();
         const url='/ls';
-        Http.open("GET", url);
-        Http.send();
-        Http.onreadystatechange=(e)=>{
+        http.open("GET", url);
+        http.send();
+        http.onreadystatechange=(e)=>{
             console.log(">>>>>>>>>>>>got response");
-            console.log(Http.responseText)
+            console.log(http.responseText)
         }
     }
 </script>
