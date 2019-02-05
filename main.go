@@ -5,19 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gobuffalo/packr"
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
+	"github.com/labstack/gommon/log"
 	"github.com/nkonev/blog-store/handlers"
+	"github.com/nkonev/blog-store/utils"
 	"github.com/spf13/viper"
+	"go.uber.org/dig"
 	"net/http"
 	"os"
 	"os/signal"
 	"regexp"
 	"strings"
-	"time"
-
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
-	"github.com/labstack/gommon/log"
-	"go.uber.org/dig"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
@@ -25,7 +24,7 @@ import (
 	packr_migrate "github.com/nkonev/blog-store/packr"
 )
 
-func configureEcho(fsh *handlers.FsHandler) *echo.Echo {
+func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) *echo.Echo {
 	bodyLimit := viper.GetString("server.body.limit")
 
 	log.SetOutput(os.Stdout)
@@ -34,7 +33,7 @@ func configureEcho(fsh *handlers.FsHandler) *echo.Echo {
 
 	e := echo.New()
 
-	e.Use(getAuthMiddleware(stringsToRegexpArray("/user.*", "/auth/.*", "/confirm.*")))
+	e.Use(authMiddleware)
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Secure())
@@ -79,19 +78,6 @@ func getStaticMiddleware(box packr.Box) echo.MiddlewareFunc {
 	}
 }
 
-func stringsToRegexpArray(strings ...string) []regexp.Regexp {
-	regexps := make([]regexp.Regexp, len(strings))
-	for i, str := range strings {
-		r, err := regexp.Compile(str)
-		if err != nil {
-			panic(err)
-		} else {
-			regexps[i] = *r
-		}
-	}
-	return regexps
-}
-
 func checkUrlInWhitelist(whitelist []regexp.Regexp, uri string) bool {
 	for _, regexp0 := range whitelist {
 		if regexp0.MatchString(uri) {
@@ -102,13 +88,14 @@ func checkUrlInWhitelist(whitelist []regexp.Regexp, uri string) bool {
 	return false
 }
 
-const SESSION_COOKIE = "SESSION";
+const SESSION_COOKIE = "SESSION"
 
-
-func getAuthMiddleware(whitelist []regexp.Regexp) echo.MiddlewareFunc {
+func configureAuthMiddleware(httpClient *http.Client) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			if checkUrlInWhitelist(whitelist, c.Request().RequestURI){
+			whitelistStr := viper.GetStringSlice("auth.exclude")
+			whitelist := utils.StringsToRegexpArray(whitelistStr)
+			if checkUrlInWhitelist(whitelist, c.Request().RequestURI) {
 				return next(c)
 			}
 
@@ -119,14 +106,6 @@ func getAuthMiddleware(whitelist []regexp.Regexp) echo.MiddlewareFunc {
 			}
 
 			// check cookie
-			// todo make bean http.Transport
-			tr := &http.Transport{
-				MaxIdleConns:       10,
-				IdleConnTimeout:    30 * time.Second,
-				DisableCompression: true,
-			}
-			client := &http.Client{Transport: tr}
-
 			req, err := http.NewRequest(
 				"GET", "http://127.0.0.1:8080/api/profile", nil,
 			)
@@ -136,7 +115,7 @@ func getAuthMiddleware(whitelist []regexp.Regexp) echo.MiddlewareFunc {
 			}
 
 			req.AddCookie(co)
-			resp, err := client.Do(req)
+			resp, err := httpClient.Do(req)
 			if err != nil {
 				log.Errorf("Error during requesting auth backend: %v", err)
 				return err
@@ -164,13 +143,24 @@ func main() {
 	container.Provide(configureHandler)
 	container.Provide(configureEcho)
 	container.Provide(configureMigrate)
-
+	container.Provide(configureAuthMiddleware)
+	container.Provide(configureHttpClient)
 	container.Invoke(runMigrate)
 
 	if echoErr := container.Invoke(runEcho); echoErr != nil {
 		log.Fatalf("Error during invoke echo: %v", echoErr)
 	}
 	log.Infof("Exit program")
+}
+
+func configureHttpClient() *http.Client {
+	tr := &http.Transport{
+		MaxIdleConns:       viper.GetInt("http.idle.conns.max"),
+		IdleConnTimeout:    viper.GetDuration("http.idle.connTimeout"),
+		DisableCompression: viper.GetBool("http.disableCompression"),
+	}
+	client := &http.Client{Transport: tr}
+	return client
 }
 
 func configureHandler(m *minio.Client) *handlers.FsHandler {

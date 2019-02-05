@@ -3,6 +3,19 @@ server:
   shutdown.timeout: "10s"
   body.limit: "2M"
 
+auth.exclude:
+  - "/user.*"
+  - "/auth/.*"
+  - "/confirm.*"
+
+
+http:
+  idle:
+    conns:
+      max: 2
+    connTimeout: '10s'
+  disableCompression: false
+
 mongo:
   migrations:
     databaseUrl: "mongodb://127.0.0.1:27017/testMigration?connect=single"

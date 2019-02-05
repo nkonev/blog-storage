@@ -114,7 +114,8 @@ func setUpContainerForIntegrationTests() *dig.Container {
 	container.Provide(configureHandler)
 	container.Provide(configureEcho)
 	container.Provide(configureMigrate)
-
+	container.Provide(configureAuthMiddleware)
+	container.Provide(configureHttpClient)
 	container.Invoke(runMigrate)
 
 	return container

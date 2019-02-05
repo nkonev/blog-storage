@@ -1,6 +1,9 @@
 package utils
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"golang.org/x/crypto/bcrypt"
+	"regexp"
+)
 
 type H map[string]interface{}
 
@@ -12,4 +15,15 @@ func HashPassword(password string) (string, error) {
 	return string(passwordHash), nil
 }
 
-// hello and die
+func StringsToRegexpArray(strings []string) []regexp.Regexp {
+	regexps := make([]regexp.Regexp, len(strings))
+	for i, str := range strings {
+		r, err := regexp.Compile(str)
+		if err != nil {
+			panic(err)
+		} else {
+			regexps[i] = *r
+		}
+	}
+	return regexps
+}
