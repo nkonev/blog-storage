@@ -90,6 +90,7 @@ func checkUrlInWhitelist(whitelist []regexp.Regexp, uri string) bool {
 }
 
 const SESSION_COOKIE = "SESSION"
+const AUTH_URL = "auth.url"
 
 func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -106,9 +107,10 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 				return c.JSON(http.StatusUnauthorized, &utils.H{"status": "unauthorized"})
 			}
 
+			authUrl := viper.GetString(AUTH_URL)
 			// check cookie
 			req, err := http.NewRequest(
-				"GET", "http://127.0.0.1:8080/api/profile", nil,
+				"GET", authUrl, nil,
 			)
 			if err != nil {
 				log.Errorf("Error during create request: %v", err)

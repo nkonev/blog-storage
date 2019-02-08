@@ -1,10 +1,7 @@
 package utils
 
 import (
-	"bytes"
 	"golang.org/x/crypto/bcrypt"
-	"io"
-	"io/ioutil"
 	"regexp"
 )
 

@@ -13,8 +13,8 @@ import (
 	"github.com/nkonev/blog-store/handlers"
 	"github.com/oliveagle/jsonpath"
 	"github.com/satori/go.uuid"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"go.uber.org/dig"
 	"io"
 	"io/ioutil"
@@ -123,17 +123,16 @@ func setUpContainerForIntegrationTests() *dig.Container {
 	return container
 }
 
-func StringToReadCloser(s string) io.ReadCloser {
+func stringToReadCloser(s string) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader([]byte(s)))
 }
 
 func TestLs(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
-	mockClient := &mocks.RestClient{}
-	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
-	container.Provide(func() client.RestClient {
-		return mockClient
-	})
+	testServer := makeOkAuthServer()
+	defer func() { testServer.Close() }()
+	viper.Set(AUTH_URL, testServer.URL)
+	container.Provide(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/ls", nil, e, "sess-cookie-1")
@@ -213,13 +212,21 @@ func getBytea(path string) []byte {
 	return dat
 }
 
+func makeOkAuthServer() *test.Server {
+	testServer := test.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(200)
+		res.Write([]byte(`{"id": 1, "login": "nikita k"}`))
+	}))
+	return testServer
+}
+
 func TestUploadLs(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
-	mockClient := &mocks.RestClient{}
-	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
-	container.Provide(func() client.RestClient {
-		return mockClient
-	})
+
+	testServer := makeOkAuthServer()
+	defer func() { testServer.Close() }()
+	viper.Set(AUTH_URL, testServer.URL)
+	container.Provide(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		path := "docker-compose.yml"
@@ -246,8 +253,7 @@ func TestUploadLs(t *testing.T) {
 		{
 			req := test.NewRequest("GET", "/ls", nil)
 			headers := map[string][]string{
-				echo.HeaderContentType: {"application/json"},
-				echo.HeaderCookie:      []string{SESSION_COOKIE + "=" + "sessionCookie"},
+				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
 			req.Header = headers
 			rec := test.NewRecorder()
@@ -279,11 +285,10 @@ func jsonPathHelper(in, jsonPath string) interface{} {
 
 func TestUploadDownloadDelete(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
-	mockClient := &mocks.RestClient{}
-	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
-	container.Provide(func() client.RestClient {
-		return mockClient
-	})
+	testServer := makeOkAuthServer()
+	defer func() { testServer.Close() }()
+	viper.Set(AUTH_URL, testServer.URL)
+	container.Provide(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		path := "docker-compose.yml"
@@ -309,6 +314,10 @@ func TestUploadDownloadDelete(t *testing.T) {
 
 		{
 			req := test.NewRequest("GET", "/download/"+fileName, nil)
+			headers := map[string][]string{
+				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
+			}
+			req.Header = headers
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
@@ -320,6 +329,10 @@ func TestUploadDownloadDelete(t *testing.T) {
 
 		{
 			req := test.NewRequest("DELETE", "/delete/"+fileName, nil)
+			headers := map[string][]string{
+				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
+			}
+			req.Header = headers
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
@@ -330,6 +343,10 @@ func TestUploadDownloadDelete(t *testing.T) {
 
 		{
 			req := test.NewRequest("GET", "/download/"+fileName, nil)
+			headers := map[string][]string{
+				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
+			}
+			req.Header = headers
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
@@ -343,11 +360,10 @@ func TestUploadDownloadDelete(t *testing.T) {
 
 func TestUploadMove(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
-	mockClient := &mocks.RestClient{}
-	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
-	container.Provide(func() client.RestClient {
-		return mockClient
-	})
+	testServer := makeOkAuthServer()
+	defer func() { testServer.Close() }()
+	viper.Set(AUTH_URL, testServer.URL)
+	container.Provide(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		path := "docker-compose.yml"
@@ -374,6 +390,10 @@ func TestUploadMove(t *testing.T) {
 
 		{
 			req := test.NewRequest("POST", "/move/"+oldFileName+"/"+fileNameNew, nil)
+			headers := map[string][]string{
+				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
+			}
+			req.Header = headers
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
@@ -384,6 +404,10 @@ func TestUploadMove(t *testing.T) {
 
 		{
 			req := test.NewRequest("GET", "/download/"+fileNameNew, nil)
+			headers := map[string][]string{
+				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
+			}
+			req.Header = headers
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 

@@ -3,12 +3,6 @@ server:
   shutdown.timeout: "10s"
   body.limit: "2M"
 
-auth.exclude:
-  - "/user.*"
-  - "/auth/.*"
-  - "/confirm.*"
-
-
 http:
   idle:
     conns:
@@ -24,3 +18,10 @@ minio:
   endpoint: 127.0.0.1:9000
   accessKeyId: AKIAIOSFODNN7EXAMPLE
   secretAccessKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+auth:
+  url: "http://127.0.0.1:8080/api/profile"
+  exclude:
+    - "/user.*"
+    - "/auth/.*"
+    - "/confirm.*"
