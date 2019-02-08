@@ -11,7 +11,6 @@ import (
 	"github.com/nkonev/blog-store/client"
 	"github.com/nkonev/blog-store/client/mocks"
 	"github.com/nkonev/blog-store/handlers"
-	"github.com/nkonev/blog-store/utils"
 	"github.com/oliveagle/jsonpath"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
@@ -124,10 +123,14 @@ func setUpContainerForIntegrationTests() *dig.Container {
 	return container
 }
 
+func StringToReadCloser(s string) io.ReadCloser {
+	return ioutil.NopCloser(bytes.NewReader([]byte(s)))
+}
+
 func TestLs(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
 	mockClient := &mocks.RestClient{}
-	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: utils.StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
+	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
 	container.Provide(func() client.RestClient {
 		return mockClient
 	})
@@ -213,7 +216,7 @@ func getBytea(path string) []byte {
 func TestUploadLs(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
 	mockClient := &mocks.RestClient{}
-	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: utils.StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
+	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
 	container.Provide(func() client.RestClient {
 		return mockClient
 	})
@@ -277,7 +280,7 @@ func jsonPathHelper(in, jsonPath string) interface{} {
 func TestUploadDownloadDelete(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
 	mockClient := &mocks.RestClient{}
-	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: utils.StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
+	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
 	container.Provide(func() client.RestClient {
 		return mockClient
 	})
@@ -341,7 +344,7 @@ func TestUploadDownloadDelete(t *testing.T) {
 func TestUploadMove(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
 	mockClient := &mocks.RestClient{}
-	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: utils.StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
+	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
 	container.Provide(func() client.RestClient {
 		return mockClient
 	})

@@ -33,7 +33,3 @@ func StringsToRegexpArray(strings []string) []regexp.Regexp {
 
 const USER_ID = "iserId"
 const USER_LOGIN = "userLogin"
-
-func StringToReadCloser(s string) io.ReadCloser {
-	return ioutil.NopCloser(bytes.NewReader([]byte(s)))
-}
