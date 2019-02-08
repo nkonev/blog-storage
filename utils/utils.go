@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"bytes"
 	"golang.org/x/crypto/bcrypt"
+	"io"
+	"io/ioutil"
 	"regexp"
 )
 
@@ -30,3 +33,7 @@ func StringsToRegexpArray(strings []string) []regexp.Regexp {
 
 const USER_ID = "iserId"
 const USER_LOGIN = "userLogin"
+
+func StringToReadCloser(s string) io.ReadCloser {
+	return ioutil.NopCloser(bytes.NewReader([]byte(s)))
+}

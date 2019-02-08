@@ -8,10 +8,14 @@ import (
 	"github.com/labstack/gommon/log"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/x/network/connstring"
+	"github.com/nkonev/blog-store/client"
+	"github.com/nkonev/blog-store/client/mocks"
 	"github.com/nkonev/blog-store/handlers"
+	"github.com/nkonev/blog-store/utils"
 	"github.com/oliveagle/jsonpath"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/dig"
 	"io"
 	"io/ioutil"
@@ -89,7 +93,7 @@ func request(method, path string, body io.Reader, e *echo.Echo, sessionCookie st
 	req := test.NewRequest(method, path, body)
 	Header := map[string][]string{
 		echo.HeaderContentType: {"application/json"},
-		echo.HeaderCookie:      []string{},
+		echo.HeaderCookie:      []string{SESSION_COOKIE + "=" + sessionCookie},
 	}
 	req.Header = Header
 	rec := test.NewRecorder()
@@ -115,7 +119,6 @@ func setUpContainerForIntegrationTests() *dig.Container {
 	container.Provide(configureEcho)
 	container.Provide(configureMigrate)
 	container.Provide(configureAuthMiddleware)
-	container.Provide(configureHttpClient)
 	container.Invoke(runMigrate)
 
 	return container
@@ -123,9 +126,14 @@ func setUpContainerForIntegrationTests() *dig.Container {
 
 func TestLs(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
+	mockClient := &mocks.RestClient{}
+	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: utils.StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
+	container.Provide(func() client.RestClient {
+		return mockClient
+	})
 
 	runTest(container, func(e *echo.Echo) {
-		c, b, _ := request("GET", "/ls", nil, e, "")
+		c, b, _ := request("GET", "/ls", nil, e, "sess-cookie-1")
 		assert.Equal(t, http.StatusOK, c)
 		assert.NotEmpty(t, b)
 		log.Infof("Got body: %v", b)
@@ -135,6 +143,9 @@ func TestLs(t *testing.T) {
 func TestStaticIndex(t *testing.T) {
 
 	container := setUpContainerForIntegrationTests()
+	container.Provide(func() client.RestClient {
+		return &mocks.RestClient{}
+	})
 
 	runTest(container, func(e *echo.Echo) {
 		c, _, _ := request("GET", "/index.html", nil, e, "")
@@ -145,6 +156,9 @@ func TestStaticIndex(t *testing.T) {
 func TestStaticRoot(t *testing.T) {
 
 	container := setUpContainerForIntegrationTests()
+	container.Provide(func() client.RestClient {
+		return &mocks.RestClient{}
+	})
 
 	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/", nil, e, "")
@@ -156,6 +170,9 @@ func TestStaticRoot(t *testing.T) {
 func TestStaticAssets(t *testing.T) {
 
 	container := setUpContainerForIntegrationTests()
+	container.Provide(func() client.RestClient {
+		return &mocks.RestClient{}
+	})
 
 	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/test-assets/main.js", nil, e, "")
@@ -195,6 +212,11 @@ func getBytea(path string) []byte {
 
 func TestUploadLs(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
+	mockClient := &mocks.RestClient{}
+	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: utils.StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
+	container.Provide(func() client.RestClient {
+		return mockClient
+	})
 
 	runTest(container, func(e *echo.Echo) {
 		path := "docker-compose.yml"
@@ -207,7 +229,7 @@ func TestUploadLs(t *testing.T) {
 			req := test.NewRequest("POST", "/upload", body)
 			headers := map[string][]string{
 				echo.HeaderContentType: {contentType},
-				echo.HeaderCookie:      []string{},
+				echo.HeaderCookie:      []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
 			req.Header = headers
 			rec := test.NewRecorder()
@@ -220,6 +242,11 @@ func TestUploadLs(t *testing.T) {
 
 		{
 			req := test.NewRequest("GET", "/ls", nil)
+			headers := map[string][]string{
+				echo.HeaderContentType: {"application/json"},
+				echo.HeaderCookie:      []string{SESSION_COOKIE + "=" + "sessionCookie"},
+			}
+			req.Header = headers
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
@@ -249,6 +276,11 @@ func jsonPathHelper(in, jsonPath string) interface{} {
 
 func TestUploadDownloadDelete(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
+	mockClient := &mocks.RestClient{}
+	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: utils.StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
+	container.Provide(func() client.RestClient {
+		return mockClient
+	})
 
 	runTest(container, func(e *echo.Echo) {
 		path := "docker-compose.yml"
@@ -261,7 +293,7 @@ func TestUploadDownloadDelete(t *testing.T) {
 			req := test.NewRequest("POST", "/upload", body)
 			headers := map[string][]string{
 				echo.HeaderContentType: {contentType},
-				echo.HeaderCookie:      []string{},
+				echo.HeaderCookie:      []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
 			req.Header = headers
 			rec := test.NewRecorder()
@@ -308,6 +340,11 @@ func TestUploadDownloadDelete(t *testing.T) {
 
 func TestUploadMove(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
+	mockClient := &mocks.RestClient{}
+	mockClient.On("Do", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: 200, Body: utils.StringToReadCloser(`{"id": 1, "login": "nikita k"}`)}, nil)
+	container.Provide(func() client.RestClient {
+		return mockClient
+	})
 
 	runTest(container, func(e *echo.Echo) {
 		path := "docker-compose.yml"
@@ -321,7 +358,7 @@ func TestUploadMove(t *testing.T) {
 			req := test.NewRequest("POST", "/upload", body)
 			headers := map[string][]string{
 				echo.HeaderContentType: {contentType},
-				echo.HeaderCookie:      []string{},
+				echo.HeaderCookie:      []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
 			req.Header = headers
 			rec := test.NewRecorder()

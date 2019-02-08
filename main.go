@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
+	"github.com/nkonev/blog-store/client"
 	"github.com/nkonev/blog-store/handlers"
 	"github.com/nkonev/blog-store/utils"
 	"github.com/spf13/viper"
@@ -90,7 +91,7 @@ func checkUrlInWhitelist(whitelist []regexp.Regexp, uri string) bool {
 
 const SESSION_COOKIE = "SESSION"
 
-func configureAuthMiddleware(httpClient *http.Client) echo.MiddlewareFunc {
+func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			whitelistStr := viper.GetStringSlice("auth.exclude")
@@ -101,8 +102,8 @@ func configureAuthMiddleware(httpClient *http.Client) echo.MiddlewareFunc {
 
 			sessionCookie, err := c.Request().Cookie(SESSION_COOKIE)
 			if err != nil {
-				log.Errorf("Error get '%v' cookie: %v", SESSION_COOKIE, err)
-				return err
+				log.Infof("Error get '%v' cookie: %v", SESSION_COOKIE, err)
+				return c.JSON(http.StatusUnauthorized, &utils.H{"status": "unauthorized"})
 			}
 
 			// check cookie
@@ -162,23 +163,13 @@ func main() {
 	container.Provide(configureEcho)
 	container.Provide(configureMigrate)
 	container.Provide(configureAuthMiddleware)
-	container.Provide(configureHttpClient)
+	container.Provide(client.NewRestClient)
 	container.Invoke(runMigrate)
 
 	if echoErr := container.Invoke(runEcho); echoErr != nil {
 		log.Fatalf("Error during invoke echo: %v", echoErr)
 	}
 	log.Infof("Exit program")
-}
-
-func configureHttpClient() *http.Client {
-	tr := &http.Transport{
-		MaxIdleConns:       viper.GetInt("http.idle.conns.max"),
-		IdleConnTimeout:    viper.GetDuration("http.idle.connTimeout"),
-		DisableCompression: viper.GetBool("http.disableCompression"),
-	}
-	client := &http.Client{Transport: tr}
-	return client
 }
 
 func configureHandler(m *minio.Client) *handlers.FsHandler {
