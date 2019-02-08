@@ -9,7 +9,6 @@ import (
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/x/network/connstring"
 	"github.com/nkonev/blog-store/client"
-	"github.com/nkonev/blog-store/client/mocks"
 	"github.com/nkonev/blog-store/handlers"
 	"github.com/oliveagle/jsonpath"
 	"github.com/satori/go.uuid"
@@ -145,9 +144,10 @@ func TestLs(t *testing.T) {
 func TestStaticIndex(t *testing.T) {
 
 	container := setUpContainerForIntegrationTests()
-	container.Provide(func() client.RestClient {
-		return &mocks.RestClient{}
-	})
+	testServer := makeOkAuthServer()
+	defer func() { testServer.Close() }()
+	viper.Set(AUTH_URL, testServer.URL)
+	container.Provide(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		c, _, _ := request("GET", "/index.html", nil, e, "")
@@ -158,9 +158,10 @@ func TestStaticIndex(t *testing.T) {
 func TestStaticRoot(t *testing.T) {
 
 	container := setUpContainerForIntegrationTests()
-	container.Provide(func() client.RestClient {
-		return &mocks.RestClient{}
-	})
+	testServer := makeOkAuthServer()
+	defer func() { testServer.Close() }()
+	viper.Set(AUTH_URL, testServer.URL)
+	container.Provide(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/", nil, e, "")
@@ -172,9 +173,10 @@ func TestStaticRoot(t *testing.T) {
 func TestStaticAssets(t *testing.T) {
 
 	container := setUpContainerForIntegrationTests()
-	container.Provide(func() client.RestClient {
-		return &mocks.RestClient{}
-	})
+	testServer := makeOkAuthServer()
+	defer func() { testServer.Close() }()
+	viper.Set(AUTH_URL, testServer.URL)
+	container.Provide(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/test-assets/main.js", nil, e, "")
