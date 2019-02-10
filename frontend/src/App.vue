@@ -3,10 +3,12 @@
         <ul class="file-list">
             <li v-for="file in files" :key="file.filename"><a :href="file.url">{{file.filename}}</a> <span class="file-list-delete">[x]</span></li>
         </ul>
+        <Upload/>
     </div>
 </template>
 
 <script>
+    import Upload from "@/Upload"
     export default {
         name: 'App',
         data(){
@@ -21,6 +23,9 @@
             }, reason => {
                 console.error("error during get files");
             })
+        },
+        components:{
+            Upload
         }
     }
 </script>

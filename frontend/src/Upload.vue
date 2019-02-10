@@ -1,204 +1,151 @@
 <template>
-    <drop class="drop" @drop="handleDrop" @dragover="onDragEnter" @dragleave="onDragLeave" drop-effect="copy">
-        <template v-if="!resultPresent">
-            <div class="drop-content" v-if="!processing">
-                <input autofocus v-model="inputUrl" type="text" @input="onChangedUrl()" placeholder="Enter VK url"/>
-                <h1>Drop VK url here</h1>
-            </div>
-            <spinner v-else class="send-spinner" :line-size="10" :spacing="20" :speed="0.4" size="55" :font-size="20" message="Processing"></spinner>
-        </template>
-        <div v-else v-bind:class="{ 'result': true, 'success': resultSuccess, 'fail': !resultSuccess }">
-            <span>{{inputUrl}}</span>
-            <ul v-if="resultSuccess">
-                <li v-for="element in resultList" :key="element.url"><a :href="element.url">{{element.title}}</a></li>
+    <div class="example-drag">
+        <div class="upload">
+            <ul v-if="files.length">
+                <li v-for="(file, index) in files" :key="file.id">
+                    <span>{{file.name}}</span> -
+                    <span>{{file.size | formatSize}}</span><span v-if="file.error || file.success || file.active"> -</span>
+                    <span v-if="file.error">{{file.error}}</span>
+                    <span v-else-if="file.success">success</span>
+                    <span v-else-if="file.active">active</span>
+                    <span v-else></span>
+                </li>
             </ul>
-            <div v-else>
-                {{errorMessage}}
+
+            <div v-show="$refs.upload && $refs.upload.dropActive" class="drop-active">
+                <h3>Drop files to upload</h3>
             </div>
-            <span class="close" @click="closeResult()">close</span>
+
+            <div class="example-btn">
+                <file-upload
+                        class="btn btn-primary"
+                        post-action="/upload/post"
+                        :multiple="true"
+                        :drop="true"
+                        :drop-directory="true"
+                        v-model="files"
+                        ref="upload">
+                    <i class="fa fa-plus"></i>
+                    Upload files
+                </file-upload>
+                <template v-if="files.length">
+                <button type="button" class="btn btn-success" v-if="!$refs.upload || !$refs.upload.active" @click.prevent="$refs.upload.active = true">
+                    <i class="fa fa-arrow-up" aria-hidden="true"></i>
+                    Start Upload
+                </button>
+                <button type="button" class="btn btn-danger"  v-else @click.prevent="$refs.upload.active = false">
+                    <i class="fa fa-stop" aria-hidden="true"></i>
+                    Stop Upload
+                </button>
+                </template>
+            </div>
         </div>
-    </drop>
+    </div>
 </template>
+<style>
+    .example-drag{
+        /*background: antiquewhite;*/
+    }
+    .example-drag label.btn {
+        margin-bottom: 0;
+        margin-right: 1rem;
+    }
+    .example-drag .drop-active {
+        top: 0;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        position: fixed;
+        z-index: 9999;
+        opacity: .6;
+        text-align: center;
+        background: #000;
+    }
+    .example-drag .drop-active h3 {
+        margin: -.5em 0 0;
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        -webkit-transform: translateY(-50%);
+        -ms-transform: translateY(-50%);
+        transform: translateY(-50%);
+        font-size: 40px;
+        color: #fff;
+        padding: 0;
+    }
+
+    .example-drag label.btn {
+
+        margin-bottom: 0;
+        margin-right: 1rem;
+
+    }
+    .btn-group-lg > .btn, .btn-lg {
+
+        padding: .5rem 1rem;
+        font-size: 1.25rem;
+        line-height: 1.5;
+        border-radius: .3rem;
+
+    }
+    .btn-primary {
+
+        color: #fff;
+        background-color: #007bff;
+        border-color: #007bff;
+
+    }
+    .btn {
+        display: inline-block;
+        font-weight: 400;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: middle;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        border: 1px solid transparent;
+        border-top-color: transparent;
+        border-right-color: transparent;
+        border-bottom-color: transparent;
+        border-left-color: transparent;
+        padding: .5rem .75rem;
+        font-size: 1rem;
+        line-height: 1.25;
+        border-radius: .25rem;
+        transition: all .15s ease-in-out;
+        cursor: pointer;
+    }
+</style>
 
 <script>
-    import {Drop} from 'vue-drag-drop';
-    import Spinner from 'vue-simple-spinner'
-    import debounce from "lodash/debounce";
+    import Vue from 'vue'
+    import FileUpload from 'vue-upload-component'
+
+    Vue.filter('formatSize', function (size) {
+        if (size > 1024 * 1024 * 1024 * 1024) {
+            return (size / 1024 / 1024 / 1024 / 1024).toFixed(2) + ' TB'
+        } else if (size > 1024 * 1024 * 1024) {
+            return (size / 1024 / 1024 / 1024).toFixed(2) + ' GB'
+        } else if (size > 1024 * 1024) {
+            return (size / 1024 / 1024).toFixed(2) + ' MB'
+        } else if (size > 1024) {
+            return (size / 1024).toFixed(2) + ' KB'
+        }
+        return size.toString() + ' B'
+    });
+
 
     export default {
-        name: 'Upload',
-        components: {Drop, Spinner},
-        data(){
+        components: {
+            FileUpload,
+        },
+        data() {
             return {
-                inputUrl: '',
-                processing: false,
-                resultList: [],
-                resultSuccess: true,
-                errorMessage: ''
-            }
-        },
-        methods: {
-            handleDrop(data, event) {
-                console.log("handleDrop event", data, event);
-                event.preventDefault();
-                const url = event.dataTransfer.getData('text/uri-list');
-                console.log("handleDrop url=", url);
-                this.$data.inputUrl = url;
-                this.doWork();
-            },
-            onDragEnter(){
-                if (document.querySelector('.drop h1')) {
-                    document.querySelector('.drop h1').style.color = 'white';
-                }
-                if (document.querySelector('.drop')) {
-                    document.querySelector('.drop').style.background = 'rgba(0, 255, 152, 0.37)';
-                }
-            },
-            onDragLeave(){
-                this.resetStyle();
-            },
-            onChangedUrl(){
-                this.doWork();
-            },
-            resetStyle(){
-                if (document.querySelector('.drop h1')) {
-                    document.querySelector('.drop h1').style.color = 'grey';
-                }
-                if (document.querySelector('.drop')) {
-                    document.querySelector('.drop').style.background = '#f1f1f1';
-                }
-            },
-            doWork(){
-                if (this.$data.inputUrl) {
-                    this.$data.processing = true;
-                    this.$http.put('/process?url=' + this.$data.inputUrl).then(response => {
-                        this.$data.processing = false;
-                        this.$data.resultSuccess = true;
-                        this.$data.errorMessage = '';
-                        this.$data.resultList = response.data;
-                        this.resetStyle();
-                    }, response => {
-                        console.error("Error on process url", response);
-                        this.$data.processing = false;
-                        this.$data.resultSuccess = false;
-                        this.$data.errorMessage = 'Error';
-                        this.$data.resultList = [];
-                        this.resetStyle();
-                    })
-                }
-            },
-            closeResult(){
-                this.$data.resultList = [];
-                this.$data.inputUrl = '';
-                this.$data.resultSuccess = true;
-                this.$data.errorMessage = '';
-                this.resetStyle();
-            }
-        },
-        created() {
-            // https://forum-archive.vuejs.org/topic/5174/debounce-replacement-in-vue-2-0
-            this.onChangedUrl = debounce(this.onChangedUrl, 700);
-        },
-        computed:{
-            resultPresent(){
-                return this.$data.resultList.length > 0
+                files: [],
             }
         }
     }
-
 </script>
-
-<style lang="stylus">
-    html, body {
-        height: 100%
-    }
-</style>
-
-<style lang="stylus" scoped>
-    html, body {
-        height: 100%
-    }
-    #app {
-        display flex
-        justify-content center
-        align-items center
-        width 100%
-        height 100%
-        font-family monospace, serif
-
-        input {
-            border-style hidden
-            //border-width 0px
-            width 100%
-            box-sizing: border-box;
-            font-size x-large
-        }
-
-        .drop {
-            display flex
-            flex-direction column
-            width 90%
-            height 90%
-            justify-content center
-
-            background #f1f1f1
-
-            h1 {
-                position relative
-                font-size xx-large
-                color grey
-                top 40%
-                width 100%
-                text-align center
-            }
-
-            border-width 4px
-            border-style dashed
-
-            &-content {
-                width: 100%
-                height: 100%
-            }
-        }
-
-        .result {
-            display flex
-            align-items center
-            justify-content center
-            flex-direction column
-            width 100%
-            height 100%
-
-            ul {
-                li {
-                    font-size x-large
-                }
-            }
-
-
-            span.close {
-                cursor pointer
-                color crimson
-            }
-        }
-
-        .success {
-            animation: colorChangeSuccess 4s;
-            @keyframes colorChangeSuccess
-            {
-                0%   {background: rgba(0, 255, 152, 0.37);}
-                100% {background: #f1f1f1;}
-            }
-        }
-
-        .fail {
-            animation: colorChangeFail 4s;
-            @keyframes colorChangeFail
-            {
-                0%   {background: rgba(255, 0, 3, 0.36);}
-                100% {background: #f1f1f1;}
-            }
-        }
-
-    }
-</style>
