@@ -2,6 +2,7 @@ server:
   address: ":1234"
   shutdown.timeout: "10s"
   body.limit: "2M"
+  url: http://127.0.0.1:1234
 
 http:
   idle:

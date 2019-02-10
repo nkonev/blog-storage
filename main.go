@@ -42,7 +42,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 
 	e.GET("/ls", fsh.LsHandler)
 	e.POST("/upload", fsh.UploadHandler)
-	e.GET("/download/:file", fsh.DownloadHandler)
+	e.GET(utils.DOWNLOAD_PREFIX+":file", fsh.DownloadHandler)
 	e.POST("/move/:from/:to", fsh.MoveHandler)
 	e.DELETE("/delete/:file", fsh.DeleteHandler)
 
@@ -175,7 +175,7 @@ func main() {
 }
 
 func configureHandler(m *minio.Client) *handlers.FsHandler {
-	return handlers.NewFsHandler(m)
+	return handlers.NewFsHandler(m, viper.GetString("server.url"))
 }
 
 func configureMigrate() *migrate.Migrate {

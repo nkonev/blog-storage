@@ -9,16 +9,18 @@ import (
 	"net/http"
 )
 
-func NewFsHandler(minio *minio.Client) *FsHandler {
-	return &FsHandler{minio: minio}
+func NewFsHandler(minio *minio.Client, serverUrl string) *FsHandler {
+	return &FsHandler{minio: minio, serverUrl: serverUrl}
 }
 
 type FsHandler struct {
-	minio *minio.Client
+	serverUrl string
+	minio     *minio.Client
 }
 
 type FileInfo struct {
 	Filename string `json:"filename"`
+	Url      string `json:"url"`
 }
 
 func (h *FsHandler) LsHandler(c echo.Context) error {
@@ -35,7 +37,7 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 	for objInfo := range h.minio.ListObjects(bucket, "", false, doneCh) {
 		log.Infof("Object '%v'", objInfo.Key)
 
-		buffer = append(buffer, FileInfo{Filename: objInfo.Key})
+		buffer = append(buffer, FileInfo{Filename: objInfo.Key, Url: h.serverUrl + utils.DOWNLOAD_PREFIX + objInfo.Key})
 	}
 
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "files": buffer})

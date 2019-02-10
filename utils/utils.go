@@ -30,3 +30,4 @@ func StringsToRegexpArray(strings []string) []regexp.Regexp {
 
 const USER_ID = "iserId"
 const USER_LOGIN = "userLogin"
+const DOWNLOAD_PREFIX = "/download/"

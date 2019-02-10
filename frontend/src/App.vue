@@ -1,8 +1,8 @@
 <template>
     <div id="app">
-        <h1>Vue is loaded</h1>
+        <h1>Files</h1>
         <ul>
-            <li v-for="file in files" :key="file.filename">{{file.filename}}</li>
+            <li v-for="file in files" :key="file.filename"><a :href="file.url">{{file.filename}}</a></li>
         </ul>
     </div>
 </template>
