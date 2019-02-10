@@ -1,8 +1,7 @@
 <template>
     <div id="app">
-        <h1>Files</h1>
-        <ul>
-            <li v-for="file in files" :key="file.filename"><a :href="file.url">{{file.filename}}</a></li>
+        <ul class="file-list">
+            <li v-for="file in files" :key="file.filename"><a :href="file.url">{{file.filename}}</a> <span class="file-list-delete">[x]</span></li>
         </ul>
     </div>
 </template>
@@ -45,5 +44,11 @@
         height 100%
         font-family monospace, serif
 
+        .file-list {
+            &-delete {
+                cursor: pointer
+                color red
+            }
+        }
     }
 </style>
