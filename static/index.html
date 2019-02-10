@@ -8,27 +8,13 @@
     <title>Document</title>
     <link rel="stylesheet" href="/build/main.css">
     <link rel="stylesheet" href="/build/vendor.css">
-    <link rel="stylesheet" href="/build/css/materialdesignicons.css">
 </head>
 <body>
 <div id="app-container">
-    Loading
+    Loading...
 </div>
 
 <script type="application/javascript" src="/build/vendor.js"></script>
 <script type="application/javascript" src="/build/main.js"></script>
-<script type="application/javascript">
-    window.onload = function(){
-        console.log(">>>>>>>>>>>>onload");
-        const http = new XMLHttpRequest();
-        const url='/ls';
-        http.open("GET", url);
-        http.send();
-        http.onreadystatechange=(e)=>{
-            console.log(">>>>>>>>>>>>got response");
-            console.log(http.responseText)
-        }
-    }
-</script>
 </body>
 </html>
