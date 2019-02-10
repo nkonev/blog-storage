@@ -141,6 +141,39 @@ func TestLs(t *testing.T) {
 	})
 }
 
+func TestUnauthorizedWithoutCookie(t *testing.T) {
+	container := setUpContainerForIntegrationTests()
+	testServer := makeOkAuthServer()
+	defer func() { testServer.Close() }()
+	viper.Set(AUTH_URL, testServer.URL)
+	container.Provide(client.NewRestClient)
+
+	runTest(container, func(e *echo.Echo) {
+		req := test.NewRequest("GET", "/ls", nil)
+		rec := test.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		assert.NotEmpty(t, rec.Body.String())
+		log.Infof("Got body: %v", rec.Body.String())
+	})
+}
+
+func TestUnauthorizedByServer(t *testing.T) {
+	container := setUpContainerForIntegrationTests()
+	testServer := makeFailAuthServer()
+	defer func() { testServer.Close() }()
+	viper.Set(AUTH_URL, testServer.URL)
+	container.Provide(client.NewRestClient)
+
+	runTest(container, func(e *echo.Echo) {
+		c, b, _ := request("GET", "/ls", nil, e, "sess-cookie-1")
+		assert.Equal(t, http.StatusUnauthorized, c)
+		assert.NotEmpty(t, b)
+		log.Infof("Got body: %v", b)
+	})
+}
+
 func TestStaticIndex(t *testing.T) {
 
 	container := setUpContainerForIntegrationTests()
@@ -218,6 +251,15 @@ func makeOkAuthServer() *test.Server {
 	testServer := test.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(200)
 		res.Write([]byte(`{"id": 1, "login": "nikita k"}`))
+	}))
+	return testServer
+}
+
+func makeFailAuthServer() *test.Server {
+	testServer := test.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(401)
+		res.Write([]byte(`{"status":401,"error":"Unauthorized","message":"Доступ запрещен","timeStamp":"Mon Feb 11 00:14:12 MSK 2019","validationErrors":[]}`))
+
 	}))
 	return testServer
 }
