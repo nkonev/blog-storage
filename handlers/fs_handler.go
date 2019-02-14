@@ -7,6 +7,7 @@ import (
 	"github.com/minio/minio-go"
 	"github.com/nkonev/blog-store/utils"
 	"net/http"
+	"net/url"
 )
 
 func NewFsHandler(minio *minio.Client, serverUrl string) *FsHandler {
@@ -21,6 +22,7 @@ type FsHandler struct {
 type FileInfo struct {
 	Filename string `json:"filename"`
 	Url      string `json:"url"`
+	Size     int64  `json:"size"`
 }
 
 func (h *FsHandler) LsHandler(c echo.Context) error {
@@ -35,9 +37,16 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 
 	var buffer []FileInfo = make([]FileInfo, 0)
 	for objInfo := range h.minio.ListObjects(bucket, "", false, doneCh) {
-		log.Infof("Object '%v'", objInfo.Key)
+		log.Debugf("Object '%v'", objInfo.Key)
 
-		buffer = append(buffer, FileInfo{Filename: objInfo.Key, Url: h.serverUrl + utils.DOWNLOAD_PREFIX + objInfo.Key})
+		var Url *url.URL
+		Url, err := url.Parse(h.serverUrl)
+		if err != nil {
+			return err
+		}
+		Url.Path += utils.DOWNLOAD_PREFIX + objInfo.Key
+
+		buffer = append(buffer, FileInfo{Filename: objInfo.Key, Url: Url.String(), Size: objInfo.Size})
 	}
 
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "files": buffer})
