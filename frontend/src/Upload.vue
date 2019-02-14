@@ -1,56 +1,56 @@
 <template>
-    <div class="example-drag">
-        <div class="upload">
-            <ul v-if="files.length">
-                <li v-for="(file, index) in files" :key="file.id">
-                    <span>{{file.name}}</span> -
-                    <span>{{file.size | formatSize}}</span><span v-if="file.error || file.success || file.active"> -</span>
-                    <span v-if="file.error">{{file.error}}</span>
-                    <span v-else-if="file.success">success</span>
-                    <span v-else-if="file.active">active</span>
-                    <span v-else></span>
-                </li>
-            </ul>
+    <div class="upload-drag">
+        <ul v-if="files.length">
+            <li v-for="(file, index) in files" :key="file.id">
+                <span>{{file.name}}</span> -
+                <span>{{file.size | formatSize}}</span><span v-if="file.error || file.success || file.active"> -</span>
+                <span v-if="file.error">{{file.error}}</span>
+                <span v-else-if="file.success">success</span>
+                <span v-else-if="file.active">active</span>
+                <span v-else></span>
+            </li>
+        </ul>
 
-            <div v-show="$refs.upload && $refs.upload.dropActive" class="drop-active">
-                <h3>Drop files to upload</h3>
-            </div>
+        <div v-show="$refs.upload && $refs.upload.dropActive" class="drop-active">
+            <h3>Drop files to upload</h3>
+        </div>
 
-            <div class="example-btn">
-                <file-upload
-                        class="btn btn-primary"
-                        post-action="/upload/post"
-                        :multiple="true"
-                        :drop="true"
-                        :drop-directory="true"
-                        v-model="files"
-                        ref="upload">
-                    <i class="fa fa-plus"></i>
-                    Upload files
-                </file-upload>
-                <template v-if="files.length">
-                <button type="button" class="btn btn-success" v-if="!$refs.upload || !$refs.upload.active" @click.prevent="$refs.upload.active = true">
-                    <i class="fa fa-arrow-up" aria-hidden="true"></i>
-                    Start Upload
-                </button>
-                <button type="button" class="btn btn-danger"  v-else @click.prevent="$refs.upload.active = false">
-                    <i class="fa fa-stop" aria-hidden="true"></i>
-                    Stop Upload
-                </button>
-                </template>
-            </div>
+        <div>
+            <file-upload
+                    class="btn btn-primary"
+                    post-action="/upload/post"
+                    :multiple="true"
+                    :drop="true"
+                    :drop-directory="true"
+                    v-model="files"
+                    ref="upload">
+                <i class="fa fa-plus"></i>
+                Select files
+            </file-upload>
+            <template v-if="files.length">
+            <button type="button" class="btn btn-success" v-if="!$refs.upload || !$refs.upload.active" @click.prevent="$refs.upload.active = true">
+                <i class="fa fa-arrow-up" aria-hidden="true"></i>
+                Start Upload
+            </button>
+            <button type="button" class="btn btn-danger"  v-else @click.prevent="$refs.upload.active = false">
+                <i class="fa fa-stop" aria-hidden="true"></i>
+                Stop Upload
+            </button>
+            </template>
         </div>
     </div>
 </template>
 <style>
-    .example-drag{
-        /*background: antiquewhite;*/
+    .upload-drag{
+        background: rgba(0, 250, 154, 0.14);
+        border-style: dashed;
+        border-width: 1px;
     }
-    .example-drag label.btn {
+    .upload-drag label.btn {
         margin-bottom: 0;
         margin-right: 1rem;
     }
-    .example-drag .drop-active {
+    .upload-drag .drop-active {
         top: 0;
         bottom: 0;
         right: 0;
@@ -61,7 +61,7 @@
         text-align: center;
         background: #000;
     }
-    .example-drag .drop-active h3 {
+    .upload-drag .drop-active h3 {
         margin: -.5em 0 0;
         position: absolute;
         top: 50%;
@@ -75,7 +75,7 @@
         padding: 0;
     }
 
-    .example-drag label.btn {
+    .upload-drag label.btn {
 
         margin-bottom: 0;
         margin-right: 1rem;
