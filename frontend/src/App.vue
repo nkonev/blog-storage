@@ -129,7 +129,7 @@
             uploadFiles: {
                 handler: function (val, oldVal) {
                     let allSuccess = true;
-                    for (file of val) {
+                    for (let file of val) {
                         allSuccess = allSuccess && file.success;
                     }
                     if (allSuccess) {
