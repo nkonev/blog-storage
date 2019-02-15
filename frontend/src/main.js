@@ -2,6 +2,7 @@ import Vue from 'vue'
 import App from './App.vue'
 import VueResource from 'vue-resource'
 import Notifications from './notifications'
+import store, {SET_UNAUTHORIZED} from './store'
 Vue.config.productionTip = false;
 Vue.use(VueResource);
 
@@ -18,9 +19,15 @@ Vue.http.interceptors.push((request, next) => {
   request.headers.set('X-XSRF-TOKEN', csrfCookieValue);
 
   next((response) => {
-    if (!(response.status >= 200 && response.status < 300) && response.status!=401) {
-      console.error("Unexpected error", response);
-      Notifications.error(request.method, request.url, response.status);
+    if (!(response.status >= 200 && response.status < 300)) {
+      if (response.status===401){
+        store.commit(SET_UNAUTHORIZED, true);
+      } else {
+        console.error("Unexpected error", response);
+        Notifications.error(request.method, request.url, response.status);
+      }
+    } else {
+      store.commit(SET_UNAUTHORIZED, false);
     }
   });
 });

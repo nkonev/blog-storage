@@ -69,6 +69,8 @@
 <script>
     import Vue from 'vue'
     import FileUpload from 'vue-upload-component'
+    import store, {GET_UNAUTHORIZED} from "./store"
+    import {mapGetters} from 'vuex'
 
     Vue.filter('formatSize', function (size) {
         if (size > 1024 * 1024 * 1024 * 1024) {
@@ -89,7 +91,6 @@
             return {
                 files: [],
                 uploadFiles: [],
-                unauthorized: false,
                 bucketUsed: 0
             }
         },
@@ -111,9 +112,6 @@
                     this.$data.files = value.body.files;
                 }, reason => {
                     console.error("error during get files");
-                    if (reason.status == 401) {
-                        this.unauthorized = true;
-                    }
                 }).then(this.$http.get('/limits').then(value => {
                     this.bucketUsed = value.data.used;
                 }, reason => {
@@ -121,7 +119,6 @@
                 }))
             },
             refresh() {
-                this.unauthorized = false;
                 this.ls();
             }
         },
@@ -146,7 +143,11 @@
         },
         components:{
             FileUpload,
-        }
+        },
+        computed: {
+            ...mapGetters({unauthorized: GET_UNAUTHORIZED}), // unauthorized is here, 'GET_UNAUTHORIZED' -- in store.js
+        },
+        store,
     }
 </script>
 
