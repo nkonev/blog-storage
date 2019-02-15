@@ -5,5 +5,4 @@ describe('App.vue', () => {
   it('true', () => {
     expect("true").toMatch("true")
   });
-
 });
