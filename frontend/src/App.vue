@@ -1,57 +1,64 @@
 <template>
     <div id="app" class="upload-drag">
 
-        <div class="second-list">
-            <div v-show="$refs.upload && $refs.upload.dropActive" class="drop-active">
-                <h3>Drop files to upload</h3>
+        <div v-if="unauthorized" class="unauthorized">
+            <h4>Unauthorized</h4>
+            <button @click="refresh()">Refresh</button>
+        </div>
+        <template v-else>
+            <div class="second-list">
+                <div v-show="$refs.upload && $refs.upload.dropActive" class="drop-active">
+                    <h3>Drop files to upload</h3>
+                </div>
+
+                <div class="buttons">
+                    <file-upload
+                            class="btn btn-select"
+                            post-action="/upload"
+                            :multiple="true"
+                            :drop="true"
+                            :drop-directory="true"
+                            v-model="uploadFiles"
+                            ref="upload">
+                        Select files
+                    </file-upload>
+
+                    <template v-if="uploadFiles.length">
+                        <button type="button" class="btn btn-success" v-if="!$refs.upload || !$refs.upload.active" @click.prevent="$refs.upload.active = true">
+                            Start Upload
+                        </button>
+                        <button type="button" class="btn btn-danger" v-else @click.prevent="$refs.upload.active = false">
+                            Stop Upload
+                        </button>
+
+                        <button type="button" class="btn btn-danger" @click.prevent="$refs.upload.clear()">
+                            Reset
+                        </button>
+                    </template>
+                </div>
+
+                <ul v-if="uploadFiles.length">
+                    <li v-for="(file, index) in uploadFiles" :key="file.id">
+                        <span>{{file.name}}</span> -
+                        <span>{{file.size | formatSize}}</span><span v-if="file.error || file.success || file.active"> -</span>
+                        <span v-if="file.error">{{file.error}}</span>
+                        <span v-else-if="file.success">success</span>
+                        <span v-else-if="file.active">active</span>
+                        <span v-else></span>
+                        <span class="btn-delete" @click.prevent="deleteUpload(file.name, index)" v-if="!$refs.upload || !$refs.upload.active">[x]</span>
+                    </li>
+                </ul>
             </div>
 
-            <div class="buttons">
-                <file-upload
-                        class="btn btn-select"
-                        post-action="/upload"
-                        :multiple="true"
-                        :drop="true"
-                        :drop-directory="true"
-                        v-model="uploadFiles"
-                        ref="upload">
-                    Select files
-                </file-upload>
+            <hr/>
 
-                <template v-if="uploadFiles.length">
-                    <button type="button" class="btn btn-success" v-if="!$refs.upload || !$refs.upload.active" @click.prevent="$refs.upload.active = true">
-                        Start Upload
-                    </button>
-                    <button type="button" class="btn btn-danger" v-else @click.prevent="$refs.upload.active = false">
-                        Stop Upload
-                    </button>
-
-                    <button type="button" class="btn btn-danger" @click.prevent="$refs.upload.clear()">
-                        Reset
-                    </button>
-                </template>
+            <div class="first-list">
+                <ul class="file-list">
+                    <li v-for="file in files" :key="file.filename"><a :href="file.url" target="_blank">{{file.filename}}</a> - <span>{{file.size | formatSize}}</span> <span class="btn-delete" @click.prevent="deleteFile(file.filename)">[x]</span></li>
+                </ul>
             </div>
 
-            <ul v-if="uploadFiles.length">
-                <li v-for="(file, index) in uploadFiles" :key="file.id">
-                    <span>{{file.name}}</span> -
-                    <span>{{file.size | formatSize}}</span><span v-if="file.error || file.success || file.active"> -</span>
-                    <span v-if="file.error">{{file.error}}</span>
-                    <span v-else-if="file.success">success</span>
-                    <span v-else-if="file.active">active</span>
-                    <span v-else></span>
-                    <span class="btn-delete" @click.prevent="deleteUpload(file.name, index)" v-if="!$refs.upload || !$refs.upload.active">[x]</span>
-                </li>
-            </ul>
-        </div>
-
-        <hr/>
-
-        <div class="first-list">
-            <ul class="file-list">
-                <li v-for="file in files" :key="file.filename"><a :href="file.url" target="_blank">{{file.filename}}</a> - <span>{{file.size | formatSize}}</span> <span class="btn-delete" @click.prevent="deleteFile(file.filename)">[x]</span></li>
-            </ul>
-        </div>
+        </template>
     </div>
 </template>
 
@@ -77,7 +84,8 @@
         data(){
             return {
                 files: [],
-                uploadFiles: []
+                uploadFiles: [],
+                unauthorized: false
             }
         },
         methods: {
@@ -98,7 +106,14 @@
                     this.$data.files = value.body.files;
                 }, reason => {
                     console.error("error during get files");
+                    if (reason.status == 401) {
+                        this.unauthorized = true;
+                    }
                 })
+            },
+            refresh() {
+                this.unauthorized = false;
+                this.ls();
             }
         },
         watch: {
@@ -187,6 +202,12 @@
 
             .btn {
                 margin 1px
+            }
+        }
+
+        .unauthorized {
+            button {
+                width 100%
             }
         }
     }

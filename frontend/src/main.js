@@ -18,7 +18,7 @@ Vue.http.interceptors.push((request, next) => {
   request.headers.set('X-XSRF-TOKEN', csrfCookieValue);
 
   next((response) => {
-    if (!(response.status >= 200 && response.status < 300)) {
+    if (!(response.status >= 200 && response.status < 300) && response.status!=401) {
       console.error("Unexpected error", response);
       Notifications.error(request.method, request.url, response.status);
     }
