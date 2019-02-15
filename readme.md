@@ -30,7 +30,7 @@ Caution! Don' t paste it to IntelliJ terminal - there is GO111MODULE=on.
 # Building
 ```
 go test ./...
-
 (cd frontend; npm i; npm run prod;)
-go get -u github.com/gobuffalo/packr/v2/packr2
+go get github.com/gobuffalo/packr/v2/packr2@v2.0.1
+packr2 build
 ```

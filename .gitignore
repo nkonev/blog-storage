@@ -9,3 +9,4 @@ minio-data
 blog-store
 node_modules
 build
+main-packr.go
