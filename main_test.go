@@ -20,6 +20,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	test "net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -336,7 +337,8 @@ func TestUploadDownloadDelete(t *testing.T) {
 
 	runTest(container, func(e *echo.Echo) {
 		path := "docker-compose.yml"
-		fileName := "del_" + uuid.NewV4().String() + ".yml"
+		fileName := "del_" + uuid.NewV4().String() + "docker+compose?.yml"
+		fileNameEncoded := url.PathEscape(fileName)
 		{
 			dat := getBytea(path)
 
@@ -357,7 +359,7 @@ func TestUploadDownloadDelete(t *testing.T) {
 		}
 
 		{
-			req := test.NewRequest("GET", "/download/"+fileName, nil)
+			req := test.NewRequest("GET", "/download/"+fileNameEncoded, nil)
 			headers := map[string][]string{
 				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
@@ -372,7 +374,7 @@ func TestUploadDownloadDelete(t *testing.T) {
 		}
 
 		{
-			req := test.NewRequest("DELETE", "/delete/"+fileName, nil)
+			req := test.NewRequest("DELETE", "/delete/"+fileNameEncoded, nil)
 			headers := map[string][]string{
 				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
@@ -386,7 +388,7 @@ func TestUploadDownloadDelete(t *testing.T) {
 		}
 
 		{
-			req := test.NewRequest("GET", "/download/"+fileName, nil)
+			req := test.NewRequest("GET", "/download/"+fileNameEncoded, nil)
 			headers := map[string][]string{
 				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
