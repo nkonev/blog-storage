@@ -26,3 +26,11 @@ Caution! Don' t paste it to IntelliJ terminal - there is GO111MODULE=on.
 ```
 (cd client/; mockery -name RestClient)
 ```
+
+# Building
+```
+go test ./...
+
+(cd frontend; npm i; npm run prod;)
+go get -u github.com/gobuffalo/packr/v2/packr2
+```

@@ -3,6 +3,7 @@ module github.com/nkonev/blog-store
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/gobuffalo/packr v1.22.0
+	github.com/gobuffalo/packr/v2 v2.0.0-rc.15
 	github.com/golang-migrate/migrate/v4 v4.2.3
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.2.8

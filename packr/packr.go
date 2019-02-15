@@ -3,7 +3,7 @@ package packr
 import (
 	"bytes"
 	"fmt"
-	"github.com/gobuffalo/packr"
+	"github.com/gobuffalo/packr/v2"
 	"github.com/golang-migrate/migrate/v4/source"
 	"io"
 	"io/ioutil"

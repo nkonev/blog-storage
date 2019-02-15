@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gobuffalo/packr"
+	"github.com/gobuffalo/packr/v2"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
@@ -30,7 +30,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 
 	log.SetOutput(os.Stdout)
 
-	static := packr.NewBox("./static")
+	static := packr.New("static", "./static")
 
 	e := echo.New()
 
@@ -65,7 +65,7 @@ func initViper() {
 	}
 }
 
-func getStaticMiddleware(box packr.Box) echo.MiddlewareFunc {
+func getStaticMiddleware(box *packr.Box) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			reqUrl := c.Request().RequestURI
@@ -180,9 +180,9 @@ func configureHandler(m *minio.Client) *handlers.FsHandler {
 }
 
 func configureMigrate() *migrate.Migrate {
-	box := packr.NewBox("./migrations")
+	box := packr.New("migrations", "./migrations")
 
-	d, err := packr_migrate.WithInstance(&box)
+	d, err := packr_migrate.WithInstance(box)
 	if err != nil {
 		log.Panicf("Error during create migrator driver: %v", err)
 	}

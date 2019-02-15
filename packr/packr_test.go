@@ -1,7 +1,7 @@
 package packr
 
 import (
-	"github.com/gobuffalo/packr"
+	"github.com/gobuffalo/packr/v2"
 	"log"
 	"testing"
 
@@ -9,9 +9,9 @@ import (
 )
 
 func Test(t *testing.T) {
-	box := packr.NewBox("./testdata")
+	box := packr.New("testdata", "./testdata")
 
-	d, err := WithInstance(&box)
+	d, err := WithInstance(box)
 	if err != nil {
 		log.Panicf("Error during create migrator driver: %v", err)
 	}
