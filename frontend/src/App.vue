@@ -49,6 +49,9 @@
                         <span v-else-if="file.success">success</span>
                         <span v-else-if="file.active">active</span>
                         <span v-else></span>
+                        <span class="progress" v-if="file.active || file.progress !== '0.00'">
+                            {{file.progress}}%
+                        </span>
                         <span class="btn-delete" @click.prevent="deleteUpload(file.name, index)" v-if="!$refs.upload || !$refs.upload.active">[x]</span>
                     </li>
                 </ul>
