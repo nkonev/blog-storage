@@ -14,7 +14,7 @@ matrix:
         - "wait-for-it.sh -t 30 127.0.0.1:9000 -- echo 'minio is up'"
       script:
         - "pwd"
-        - "go test ./..."
+        - "env GO111MODULE=on go test ./..."
     - language: node_js
       node_js: 10.13.0
       cache:
