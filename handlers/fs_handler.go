@@ -168,7 +168,7 @@ func (h *FsHandler) MoveHandler(c echo.Context) error {
 func (h *FsHandler) DeleteHandler(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
 	objName := getFileName(c)
-	objName, err := url.QueryUnescape(objName)
+	objName, err := url.PathUnescape(objName)
 	if err != nil {
 		return err
 	}
