@@ -168,6 +168,10 @@ func (h *FsHandler) MoveHandler(c echo.Context) error {
 func (h *FsHandler) DeleteHandler(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
 	objName := getFileName(c)
+	objName, err := url.QueryUnescape(objName)
+	if err != nil {
+		return err
+	}
 	if err := h.minio.RemoveObject(bucketName, objName); err != nil {
 		log.Errorf("Error during remove object: %v", err)
 		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})

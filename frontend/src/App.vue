@@ -2,43 +2,47 @@
     <div id="app" class="upload-drag">
 
         <div class="second-list">
-            <file-upload
-                    class="btn btn-select"
-                    post-action="/upload"
-                    :multiple="true"
-                    :drop="true"
-                    :drop-directory="true"
-                    v-model="uploadFiles"
-                    ref="upload">
-                Select files
-            </file-upload>
             <div v-show="$refs.upload && $refs.upload.dropActive" class="drop-active">
                 <h3>Drop files to upload</h3>
             </div>
 
-            <template v-if="uploadFiles.length">
-                <button type="button" class="btn btn-success" v-if="!$refs.upload || !$refs.upload.active" @click.prevent="$refs.upload.active = true">
-                    Start Upload
-                </button>
-                <button type="button" class="btn btn-danger"  v-else @click.prevent="$refs.upload.active = false">
-                    Stop Upload
-                </button>
-                <button type="button" class="btn btn-danger" @click.prevent="$refs.upload.clear()">
-                    Reset
-                </button>
+            <div class="buttons">
+                <file-upload
+                        class="btn btn-select"
+                        post-action="/upload"
+                        :multiple="true"
+                        :drop="true"
+                        :drop-directory="true"
+                        v-model="uploadFiles"
+                        ref="upload">
+                    Select files
+                </file-upload>
 
-                <ul>
-                    <li v-for="(file, index) in uploadFiles" :key="file.id">
-                        <span>{{file.name}}</span> -
-                        <span>{{file.size | formatSize}}</span><span v-if="file.error || file.success || file.active"> -</span>
-                        <span v-if="file.error">{{file.error}}</span>
-                        <span v-else-if="file.success">success</span>
-                        <span v-else-if="file.active">active</span>
-                        <span v-else></span>
-                        <span class="btn-delete" @click.prevent="deleteUpload(file.name, index)" v-if="!$refs.upload || !$refs.upload.active">[x]</span>
-                    </li>
-                </ul>
-            </template>
+                <template v-if="uploadFiles.length">
+                    <button type="button" class="btn btn-success" v-if="!$refs.upload || !$refs.upload.active" @click.prevent="$refs.upload.active = true">
+                        Start Upload
+                    </button>
+                    <button type="button" class="btn btn-danger" v-else @click.prevent="$refs.upload.active = false">
+                        Stop Upload
+                    </button>
+
+                    <button type="button" class="btn btn-danger" @click.prevent="$refs.upload.clear()">
+                        Reset
+                    </button>
+                </template>
+            </div>
+
+            <ul v-if="uploadFiles.length">
+                <li v-for="(file, index) in uploadFiles" :key="file.id">
+                    <span>{{file.name}}</span> -
+                    <span>{{file.size | formatSize}}</span><span v-if="file.error || file.success || file.active"> -</span>
+                    <span v-if="file.error">{{file.error}}</span>
+                    <span v-else-if="file.success">success</span>
+                    <span v-else-if="file.active">active</span>
+                    <span v-else></span>
+                    <span class="btn-delete" @click.prevent="deleteUpload(file.name, index)" v-if="!$refs.upload || !$refs.upload.active">[x]</span>
+                </li>
+            </ul>
         </div>
 
         <hr/>
@@ -83,7 +87,7 @@
                 this.uploadFiles.splice(index, 1)
             },
             deleteFile(filename) {
-                this.$http.delete('/delete/'+filename).then(value => {
+                this.$http.delete('/delete/'+encodeURIComponent(filename)).then(value => {
                     this.ls();
                 }, reason => {
                     console.error("error during deleting file");
@@ -138,6 +142,8 @@
     .btn-select {
         color white
         background blue
+        border-radius 2px
+        padding 3px 3px
 
         input {
             display: none
@@ -160,10 +166,11 @@
         justify-content start
         align-items center
         width 100%
-        height 100%
+        height 98%
         font-family monospace, serif
         overflow-y auto
         overflow-x hidden
+
 
         .file-list {
             width 100%
@@ -171,6 +178,16 @@
 
         hr {
             width 100%
+        }
+
+        .buttons {
+            display flex
+            justify-content start
+            align-items: center
+
+            .btn {
+                margin 1px
+            }
         }
     }
 
