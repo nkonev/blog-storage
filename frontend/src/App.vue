@@ -32,7 +32,7 @@
                                 Stop Upload
                             </button>
 
-                            <button type="button" class="btn btn-danger" @click.prevent="$refs.upload.clear()">
+                            <button type="button" class="btn btn-danger" @click.prevent="reset()">
                                 Reset
                             </button>
                         </template>
@@ -123,7 +123,12 @@
             },
             refresh() {
                 this.ls();
-            }
+            },
+            reset(){
+                console.log("resetting");
+                this.$refs.upload.clear();
+                this.ls();
+            },
         },
         watch: {
             uploadFiles: {
@@ -132,10 +137,8 @@
                     for (let file of val) {
                         allSuccess = allSuccess && file.success;
                     }
-                    if (allSuccess) {
-                        console.log('all files success', allSuccess);
-                        this.$refs.upload.clear();
-                        this.ls();
+                    if (allSuccess && this.uploadFiles.length > 0) {
+                        this.reset();
                     }
                 },
                 deep: true
