@@ -41,6 +41,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 	e.Use(middleware.BodyLimit(bodyLimit))
 
 	e.GET("/ls", fsh.LsHandler)
+	e.GET("/limits", fsh.Limits)
 	e.POST("/upload", fsh.UploadHandler)
 	e.GET(utils.DOWNLOAD_PREFIX+":file", fsh.DownloadHandler)
 	e.POST("/move/:from/:to", fsh.MoveHandler)

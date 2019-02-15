@@ -11,30 +11,34 @@
                     <h3>Drop files to upload</h3>
                 </div>
 
-                <div class="buttons">
-                    <file-upload
-                            class="btn btn-select"
-                            post-action="/upload"
-                            :multiple="true"
-                            :drop="true"
-                            :drop-directory="true"
-                            v-model="uploadFiles"
-                            ref="upload">
-                        Select files
-                    </file-upload>
+                <div class="header">
+                    <div class="buttons">
+                        <file-upload
+                                class="btn btn-select"
+                                post-action="/upload"
+                                :multiple="true"
+                                :drop="true"
+                                :drop-directory="true"
+                                v-model="uploadFiles"
+                                ref="upload">
+                            Select files
+                        </file-upload>
 
-                    <template v-if="uploadFiles.length">
-                        <button type="button" class="btn btn-success" v-if="!$refs.upload || !$refs.upload.active" @click.prevent="$refs.upload.active = true">
-                            Start Upload
-                        </button>
-                        <button type="button" class="btn btn-danger" v-else @click.prevent="$refs.upload.active = false">
-                            Stop Upload
-                        </button>
+                        <template v-if="uploadFiles.length">
+                            <button type="button" class="btn btn-success" v-if="!$refs.upload || !$refs.upload.active" @click.prevent="$refs.upload.active = true">
+                                Start Upload
+                            </button>
+                            <button type="button" class="btn btn-danger" v-else @click.prevent="$refs.upload.active = false">
+                                Stop Upload
+                            </button>
 
-                        <button type="button" class="btn btn-danger" @click.prevent="$refs.upload.clear()">
-                            Reset
-                        </button>
-                    </template>
+                            <button type="button" class="btn btn-danger" @click.prevent="$refs.upload.clear()">
+                                Reset
+                            </button>
+                        </template>
+                    </div>
+
+                    <div class="limits">Used: {{ bucketUsed | formatSize}}</div>
                 </div>
 
                 <ul v-if="uploadFiles.length">
@@ -85,7 +89,8 @@
             return {
                 files: [],
                 uploadFiles: [],
-                unauthorized: false
+                unauthorized: false,
+                bucketUsed: 0
             }
         },
         methods: {
@@ -109,7 +114,11 @@
                     if (reason.status == 401) {
                         this.unauthorized = true;
                     }
-                })
+                }).then(this.$http.get('/limits').then(value => {
+                    this.bucketUsed = value.data.used;
+                }, reason => {
+                    console.error("error during get bucket stat");
+                }))
             },
             refresh() {
                 this.unauthorized = false;
@@ -195,13 +204,23 @@
             width 100%
         }
 
-        .buttons {
+        .header {
             display flex
-            justify-content start
+            justify-content space-between
             align-items: center
 
             .btn {
                 margin 1px
+            }
+
+            .buttons {
+                display flex
+                justify-content start
+                align-items: center
+            }
+
+            .limits {
+                margin 4px
             }
         }
 

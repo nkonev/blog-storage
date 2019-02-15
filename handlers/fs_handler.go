@@ -178,3 +178,20 @@ func (h *FsHandler) DeleteHandler(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok"})
 }
+
+func (h *FsHandler) Limits(c echo.Context) error {
+	bucketName := h.ensureAndGetBucket(c)
+
+	var totalBucketConsumption int64
+
+	recursive := true
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+
+	log.Debugf("Listing bucket '%v':", bucketName)
+	for objInfo := range h.minio.ListObjects(bucketName, "", recursive, doneCh) {
+		totalBucketConsumption += objInfo.Size
+	}
+
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "used": totalBucketConsumption})
+}
