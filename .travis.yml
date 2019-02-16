@@ -1,7 +1,8 @@
 language: go
 go:
   - "1.11.2"
-node_js: 10.13.0
+node_js:
+  - "10.13.0"
 # https://arslan.io/2018/08/26/using-go-modules-with-vendor-support-on-travis-ci/
 env:
   - GO111MODULE=on
