@@ -1,25 +1,24 @@
-matrix:
-  include:
-    - language: go
-      go:
-        - "1.11.2"
-      node_js: 10.13.0
-      # https://arslan.io/2018/08/26/using-go-modules-with-vendor-support-on-travis-ci/
-      env:
-        - GO111MODULE=on
-        - NODE_VERSION=10.13.0
-      cache:
-        directories:
-          - "/home/travis/gopath/src/github.com/nkonev/blog-store/.vendor-new"
-          - "/home/travis/gopath/pkg/mod/"
-          - "/home/travis/gopath/src/github.com/nkonev/blog-store/frontend/node_modules"
-      install:
-        - "curl https://raw.githubusercontent.com/vishnubob/wait-for-it/8ed92e8cab83cfed76ff012ed4a36cef74b28096/wait-for-it.sh > ${TRAVIS_HOME}/gopath/bin/wait-for-it.sh && chmod +x ${TRAVIS_HOME}/gopath/bin/wait-for-it.sh"
-        - "docker-compose up -d"
-        - "wait-for-it.sh -t 30 127.0.0.1:27017 -- echo 'mongo is up'"
-        - "wait-for-it.sh -t 30 127.0.0.1:9000 -- echo 'minio is up'"
-        - (cd frontend; npm install;)
-      script:
-        - "pwd"
-        - "go test ./..."
-        - (cd frontend; npm run test;)
+go:
+  - "1.11.2"
+node_js: 10.13.0
+# https://arslan.io/2018/08/26/using-go-modules-with-vendor-support-on-travis-ci/
+env:
+  - GO111MODULE=on
+  - NODE_VERSION=10.13.0
+cache:
+  directories:
+    - "/home/travis/gopath/src/github.com/nkonev/blog-store/.vendor-new"
+    - "/home/travis/gopath/pkg/mod/"
+    - "/home/travis/gopath/src/github.com/nkonev/blog-store/frontend/node_modules"
+install:
+  - "curl https://raw.githubusercontent.com/vishnubob/wait-for-it/8ed92e8cab83cfed76ff012ed4a36cef74b28096/wait-for-it.sh > ${TRAVIS_HOME}/gopath/bin/wait-for-it.sh && chmod +x ${TRAVIS_HOME}/gopath/bin/wait-for-it.sh"
+  - "docker-compose up -d"
+  - "wait-for-it.sh -t 30 127.0.0.1:27017 -- echo 'mongo is up'"
+  - "wait-for-it.sh -t 30 127.0.0.1:9000 -- echo 'minio is up'"
+  - (cd frontend; npm install;)
+script:
+  - "pwd"
+  - go version
+  - "node --version"
+  - "go test ./..."
+  - (cd frontend; npm run test;)
