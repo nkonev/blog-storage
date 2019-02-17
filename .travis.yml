@@ -14,7 +14,7 @@ cache:
 before_install:
   - "nvm install 10.13.0"
   - "nvm use 10.13.0"
-  - openssl aes-256-cbc -K $encrypted_bdeeab504dc0_key -iv $encrypted_bdeeab504dc0_iv -in .travis/id_rsa.enc -out ~/.ssh/id_rsa -d
+  - openssl aes-256-cbc -K $encrypted_bs_key -iv $encrypted_bs_iv -in .travis/id_rsa.enc -out ~/.ssh/id_rsa -d
   - chmod 600 ~/.ssh/id_rsa
 install:
   - "node --version"
