@@ -7,9 +7,10 @@ services:
       - 1234:1234
     logging:
       driver: "json-file"
+    #      options:
+    #        tag: mongo
     networks:
       - traefik_backend
-
   mongo:
     image: mongo:4.1.7
     hostname: mongo
