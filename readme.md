@@ -34,3 +34,8 @@ go test ./...
 go get github.com/gobuffalo/packr/v2/packr2@v2.0.1
 packr2 build
 ```
+
+# Deploy to docker swarm
+```
+docker stack deploy --compose-file /path/to/docker-compose.yml BLOGSTORESTACK
+```

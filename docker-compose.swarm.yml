@@ -11,6 +11,7 @@ services:
     #        tag: mongo
     networks:
       - traefik_backend
+      - backend
     volumes:
       - /host/etc/config.yml:/etc/config.yml
     command: ["-config=/etc/config.yml"]
@@ -25,6 +26,8 @@ services:
       driver: "json-file"
     #      options:
     #        tag: mongo
+    networks:
+      - backend
   minio:
     image: minio/minio:RELEASE.2019-01-31T00-31-19Z
     hostname: minio
@@ -40,12 +43,16 @@ services:
       driver: "json-file"
 #      options:
 #        tag: minio
+    networks:
+      - backend
 
 volumes:
   mongo_prod_blog_store_data_dir:
   minio_prod_blog_store_data_dir:
 
 networks:
+  backend:
+    driver: overlay
   traefik_backend:
     external: true
     name: proxy_backend
