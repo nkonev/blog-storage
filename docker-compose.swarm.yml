@@ -11,6 +11,9 @@ services:
     #        tag: mongo
     networks:
       - traefik_backend
+    volumes:
+      - /host/etc/config.yml:/etc/config.yml
+    command: ["-config=/etc/config.yml"]
   mongo:
     image: mongo:4.1.7
     hostname: mongo

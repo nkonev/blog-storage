@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/gobuffalo/packr/v2"
 	"github.com/labstack/echo"
@@ -53,9 +54,8 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 }
 
 func initViper() {
-	viper.SetConfigName("config")
-	viper.AddConfigPath("./config")
-	viper.AddConfigPath("./config-dev")
+	configFile := flag.String("config", "./config-dev/config.yml", "Path to config file")
+	viper.SetConfigFile(*configFile)
 	// call multiple times to add many search paths
 	viper.SetEnvPrefix("BLOG_STORE")
 	viper.AutomaticEnv()
