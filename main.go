@@ -55,6 +55,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 
 func initViper() {
 	configFile := flag.String("config", "./config-dev/config.yml", "Path to config file")
+	flag.Parse()
 	viper.SetConfigFile(*configFile)
 	// call multiple times to add many search paths
 	viper.SetEnvPrefix("BLOG_STORE")
