@@ -9,8 +9,10 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
+	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/nkonev/blog-store/client"
 	"github.com/nkonev/blog-store/handlers"
+	"github.com/nkonev/blog-store/mongo_lock"
 	"github.com/nkonev/blog-store/utils"
 	"github.com/spf13/viper"
 	"go.uber.org/dig"
@@ -188,7 +190,7 @@ func configureMigrate() *migrate.Migrate {
 		log.Panicf("Error during create migrator driver: %v", err)
 	}
 
-	m, err := migrate.NewWithSourceInstance(packr_migrate.PackrName, d, getMongoUrl())
+	m, err := migrate.NewWithSourceInstance(packr_migrate.PackrName, d, utils.GetMongoUrl())
 
 	if err != nil {
 		log.Panicf("Error during create migrator: %v", err)
@@ -196,12 +198,19 @@ func configureMigrate() *migrate.Migrate {
 	return m
 }
 
-func getMongoUrl() string {
-	return viper.GetString("mongo.migrations.databaseUrl")
-}
+const LOCK_COLLECTION = "migration_lock"
 
 func runMigrate(m *migrate.Migrate) {
-	err := m.Up()
+	mongoClient, err := mongo.Connect(context.TODO(), utils.GetMongoUrl())
+	if err != nil {
+		log.Panicf("Error during creating lock connection: %v", err)
+	}
+	defer mongoClient.Disconnect(context.TODO())
+
+	lock := mongo_lock.NewMongoLock(mongoClient, LOCK_COLLECTION)
+	lock.AcquireLock()
+
+	err = m.Up()
 	if err != nil {
 		if err.Error() == "no change" {
 			log.Info("Migration(s) already applied")
@@ -210,6 +219,8 @@ func runMigrate(m *migrate.Migrate) {
 		}
 	}
 	log.Info("Migration run successfully")
+
+	lock.ReleaseLock()
 }
 
 func configureMinio() *minio.Client {

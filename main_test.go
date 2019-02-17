@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/mongo-go-driver/x/network/connstring"
 	"github.com/nkonev/blog-store/client"
 	"github.com/nkonev/blog-store/handlers"
+	"github.com/nkonev/blog-store/utils"
 	"github.com/oliveagle/jsonpath"
 	"github.com/satori/go.uuid"
 	"github.com/spf13/viper"
@@ -42,7 +43,7 @@ func setup() {
 	initViper()
 
 	log.Info("Set up")
-	mongoUrl := getMongoUrl()
+	mongoUrl := utils.GetMongoUrl()
 	client, err := mongo.NewClient(mongoUrl)
 	if err != nil {
 		log.Panicf("Error during create mongo client: %v", err)
