@@ -44,6 +44,8 @@ services:
       - MINIO_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE
       - MINIO_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     volumes:
+      # multipart temp store on disk (/tmp is in mem in host centos)
+      - /var/tmp/blog-store:/tmp
       - /mnt/minio/data:/data
     command: ["server", "/data"]
     logging:
