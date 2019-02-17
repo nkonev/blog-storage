@@ -30,7 +30,8 @@ script:
   - "go test ./..."
   - (cd frontend; npm run test;)
   - (cd frontend; npm run prod;)
-  - packr2 build
+  # https://medium.com/@diogok/on-golang-static-binaries-cross-compiling-and-plugins-1aed33499671
+  - CGO_ENABLED=0 packr2 build -ldflags '-w -extldflags "-static"'
   - ls -lah
   - mkdir ./build && mv ./blog-store ./build && cp ./Dockerfile ./build
   - docker build -t nkonev/blog-store:latest ./build
