@@ -368,6 +368,8 @@ func TestUploadDownloadDelete(t *testing.T) {
 			e.ServeHTTP(rec, req)
 
 			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.True(t, "927" == rec.Header().Get(echo.HeaderContentLength))
+			assert.Equal(t, "application/octet-stream", rec.Header().Get(echo.HeaderContentType))
 			assert.NotEmpty(t, rec.Body.String())
 			log.Infof("Got body: %v", rec.Body.String())
 			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)

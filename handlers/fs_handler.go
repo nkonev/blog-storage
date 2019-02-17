@@ -8,6 +8,7 @@ import (
 	"github.com/nkonev/blog-store/utils"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 func NewFsHandler(minio *minio.Client, serverUrl string) *FsHandler {
@@ -126,6 +127,9 @@ func (h *FsHandler) DownloadHandler(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
 	}
 
+	c.Response().Header().Set(echo.HeaderContentLength, strconv.FormatInt(info.Size, 10))
+	c.Response().Header().Set(echo.HeaderContentType, info.ContentType)
+
 	object, e := h.minio.GetObject(bucketName, objName, minio.GetObjectOptions{})
 	defer object.Close()
 	if e != nil {
@@ -142,7 +146,6 @@ func getFileName(context echo.Context) string {
 func (h *FsHandler) MoveHandler(c echo.Context) error {
 	from := c.Param("from")
 	to := c.Param("to")
-	// TODO make vfs in mongo
 	bucketName := h.ensureAndGetBucket(c)
 
 	info, e := h.minio.StatObject(bucketName, from, minio.StatObjectOptions{})
