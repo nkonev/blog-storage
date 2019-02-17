@@ -18,7 +18,7 @@ services:
 #      - 27017:27017
     volumes:
       - mongo_prod_blog_store_data_dir:/data/db
-      driver: "json-file"
+    driver: "json-file"
   #      options:
   #        tag: mongo
   minio:
