@@ -3,6 +3,8 @@ version: '3.7'
 services:
   store:
     image: nkonev/blog-store:latest
+    ports:
+      - 1234:1234
     logging:
       driver: "json-file"
     networks:
