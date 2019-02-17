@@ -18,9 +18,10 @@ services:
 #      - 27017:27017
     volumes:
       - mongo_prod_blog_store_data_dir:/data/db
-    driver: "json-file"
-  #      options:
-  #        tag: mongo
+    logging:
+      driver: "json-file"
+    #      options:
+    #        tag: mongo
   minio:
     image: minio/minio:RELEASE.2019-01-31T00-31-19Z
     hostname: minio
