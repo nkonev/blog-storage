@@ -3,6 +3,13 @@ version: '3.7'
 services:
   store:
     image: nkonev/blog-store:latest
+    deploy:
+      labels:
+        - traefik.enable=true
+        - traefik.backend=blog-store
+        - traefik.frontend.rule=PathPrefix:/;Host:store.nkonev.name
+        - traefik.port=1234
+        - traefik.docker.network=proxy_backend
     ports:
       - 1234:1234
     logging:
@@ -37,7 +44,7 @@ services:
       - MINIO_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE
       - MINIO_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     volumes:
-      - minio_prod_blog_store_data_dir:/data
+      - /mnt/minio/data:/data
     command: ["server", "/data"]
     logging:
       driver: "json-file"
@@ -48,7 +55,6 @@ services:
 
 volumes:
   mongo_prod_blog_store_data_dir:
-  minio_prod_blog_store_data_dir:
 
 networks:
   backend:
