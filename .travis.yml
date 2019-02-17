@@ -32,8 +32,7 @@ script:
   - (cd frontend; npm run prod;)
   - packr2 build
   - ls -lah
-  - mkdir ./tmp
-  - mv blog-store ./tmp/
-  - docker build -t nkonev/blog-store:latest ./tmp
+  - mkdir ./build && mv ./blog-store ./build && cp ./Dockerfile ./build
+  - docker build -t nkonev/blog-store:latest ./build
   - docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD";
   - docker push nkonev/blog-store:latest
