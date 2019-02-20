@@ -35,6 +35,10 @@ script:
   - ls -lah
   - mkdir ./build && mv ./blog-store ./build && cp ./Dockerfile ./build
   - docker build -t nkonev/blog-store:latest ./build
-  - docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD";
-  - docker push nkonev/blog-store:latest
-  - ssh -o "BatchMode yes" -o StrictHostKeyChecking=no -q $CONNECT_LINE $UPDATE_COMMAND;
+  - if [[ "$TRAVIS_BRANCH" == "master" && "$TRAVIS_TEST_RESULT" == "0" && "$TRAVIS_EVENT_TYPE" != "cron" ]]; then (
+      docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD";
+      docker push nkonev/blog-store:latest;
+      ssh -o "BatchMode yes" -o StrictHostKeyChecking=no -q $CONNECT_LINE $UPDATE_COMMAND;
+    ) else (
+      echo "Won't push docker image and deploy";
+    ) fi
