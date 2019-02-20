@@ -27,14 +27,14 @@ type FileInfo struct {
 }
 
 func (h *FsHandler) LsHandler(c echo.Context) error {
-	log.Infof("Get userId: %v; userLogin: %v", c.Get(utils.USER_ID), c.Get(utils.USER_LOGIN))
+	log.Debugf("Get userId: %v; userLogin: %v", c.Get(utils.USER_ID), c.Get(utils.USER_LOGIN))
 
 	bucket := h.ensureAndGetBucket(c)
 	// Create a done channel.
 	doneCh := make(chan struct{})
 	defer close(doneCh)
 
-	log.Infof("Listing bucket '%v':", bucket)
+	log.Debugf("Listing bucket '%v':", bucket)
 
 	var buffer []FileInfo = make([]FileInfo, 0)
 	for objInfo := range h.minio.ListObjects(bucket, "", false, doneCh) {
@@ -72,7 +72,7 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 
 	contentType := file.Header.Get("Content-Type")
 
-	log.Infof("Determined content type: %v", contentType)
+	log.Debugf("Determined content type: %v", contentType)
 
 	if _, err := h.minio.PutObject(bucketName, file.Filename, src, file.Size, minio.PutObjectOptions{ContentType: contentType}); err != nil {
 		log.Errorf("Error during upload object: %v", err)
