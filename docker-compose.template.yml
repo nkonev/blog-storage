@@ -4,6 +4,10 @@ services:
   store:
     image: nkonev/blog-store:latest
     deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 20s
       labels:
         - traefik.enable=true
         - traefik.backend=blog-store
