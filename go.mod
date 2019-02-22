@@ -1,6 +1,7 @@
 module github.com/nkonev/blog-store
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/gobuffalo/buffalo-plugins v1.13.0 // indirect
 	github.com/gobuffalo/envy v1.6.15 // indirect
@@ -18,6 +19,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mongodb/mongo-go-driver v0.1.0
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
+	github.com/pmezard/go-difflib v1.0.0
 	github.com/rogpeppe/go-internal v1.2.2 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/afero v1.2.1 // indirect

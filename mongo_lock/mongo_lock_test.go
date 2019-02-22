@@ -3,6 +3,7 @@ package mongo_lock
 import (
 	"context"
 	"github.com/nkonev/blog-store/.vendor-new/github.com/labstack/gommon/log"
+	"github.com/nkonev/blog-store/.vendor-new/github.com/stretchr/testify/assert"
 	"github.com/nkonev/blog-store/utils"
 	"os"
 	"sync"
@@ -59,4 +60,26 @@ func TestHangsOnLocked(t *testing.T) {
 }
 
 func TestLockIsReleased(t *testing.T) {
+	mongoClient := utils.GetMongoClient()
+	defer mongoClient.Disconnect(context.TODO())
+
+	testLock := "test_locked_2"
+	coll := mongoClient.Database(utils.GetMongoDbName(utils.GetMongoUrl())).Collection(testLock)
+
+	lock := NewMongoLock(mongoClient, testLock)
+
+	lock.AcquireLock()
+	one := coll.FindOne(context.TODO(), GetIdDoc())
+	raws, err := one.DecodeBytes()
+	if err != nil {
+		log.Fatalf("error during find: %v", err)
+	}
+	assert.NotNil(t, raws)
+
+	lock.ReleaseLock()
+
+	oneAfter := coll.FindOne(context.TODO(), GetIdDoc())
+	rawsAfter, errAfter := oneAfter.DecodeBytes()
+	assert.NotNil(t, errAfter)
+	assert.Nil(t, rawsAfter)
 }
