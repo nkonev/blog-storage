@@ -3,13 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"flag"
-	"fmt"
 	"github.com/gobuffalo/packr/v2"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
-	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/nkonev/blog-store/client"
 	"github.com/nkonev/blog-store/handlers"
 	"github.com/nkonev/blog-store/mongo_lock"
@@ -53,19 +50,6 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 	e.Pre(getStaticMiddleware(static))
 
 	return e
-}
-
-func initViper() {
-	configFile := flag.String("config", "./config-dev/config.yml", "Path to config file")
-	flag.Parse()
-	viper.SetConfigFile(*configFile)
-	// call multiple times to add many search paths
-	viper.SetEnvPrefix("BLOG_STORE")
-	viper.AutomaticEnv()
-	// Find and read the config file
-	if err := viper.ReadInConfig(); err != nil { // Handle errors reading the config file
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
-	}
 }
 
 func getStaticMiddleware(box *packr.Box) echo.MiddlewareFunc {
@@ -162,7 +146,7 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 }
 
 func main() {
-	initViper()
+	utils.InitViper("./config-dev/config.yml")
 	container := dig.New()
 	container.Provide(configureMinio)
 	container.Provide(configureHandler)
@@ -201,16 +185,13 @@ func configureMigrate() *migrate.Migrate {
 const LOCK_COLLECTION = "migration_lock"
 
 func runMigrate(m *migrate.Migrate) {
-	mongoClient, err := mongo.Connect(context.TODO(), utils.GetMongoUrl())
-	if err != nil {
-		log.Panicf("Error during creating lock connection: %v", err)
-	}
+	mongoClient := utils.GetMongoClient()
 	defer mongoClient.Disconnect(context.TODO())
 
 	lock := mongo_lock.NewMongoLock(mongoClient, LOCK_COLLECTION)
 	lock.AcquireLock()
 
-	err = m.Up()
+	err := m.Up()
 	if err != nil {
 		if err.Error() == "no change" {
 			log.Info("Migration(s) already applied")

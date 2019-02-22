@@ -16,16 +16,19 @@ type mongoLock struct {
 	idDoc          bson.D
 }
 
+func GetIdDoc() bson.D {
+	return bson.D{{"_id", 42}}
+}
+
 func NewMongoLock(mongoClient *mongo.Client, lockCollection string) *mongoLock {
-	idDoc := createBson(`{"_id": 42}`)
-	return &mongoLock{mongoClient: mongoClient, lockCollection: lockCollection, idDoc: idDoc}
+	return &mongoLock{mongoClient: mongoClient, lockCollection: lockCollection, idDoc: GetIdDoc()}
 }
 
 func createBson(data string) bson.D {
 	bdoc := bson.D{}
 	err := bson.UnmarshalExtJSON([]byte(data), true, &bdoc)
 	if err != nil {
-		log.Panicf("Error during creating unique index bson: %v", err)
+		log.Panicf("Error during creating bson from \"%v\": %v", data, err)
 	}
 	return bdoc
 }
@@ -58,7 +61,7 @@ func (ml *mongoLock) AcquireLock() {
 	duration, _ := time.ParseDuration("1s")
 
 	for {
-		result, err := database.Collection(ml.lockCollection).UpdateOne(context.TODO(), ml.idDoc, createBson(`{}`), &options.UpdateOptions{Upsert: &upsert})
+		result, err := database.Collection(ml.lockCollection).UpdateOne(context.TODO(), ml.idDoc, bson.D{}, &options.UpdateOptions{Upsert: &upsert})
 		if err != nil {
 			log.Panicf("Error during acquiring lock: %v", err)
 		} else {

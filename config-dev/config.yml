@@ -14,6 +14,8 @@ http:
 mongo:
   migrations:
     databaseUrl: "mongodb://127.0.0.1:27017/testMigration?connect=single"
+    connect:
+      timeout: '10s'
 
 minio:
   endpoint: 127.0.0.1:9000
