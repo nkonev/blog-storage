@@ -50,6 +50,7 @@ func GetMongoUrl() string {
 }
 
 func GetMongoConnectTimeout() time.Duration {
+	viper.SetDefault("mongo.migrations.connect.timeout", "10s")
 	return viper.GetDuration("mongo.migrations.connect.timeout")
 }
 
