@@ -1,12 +1,16 @@
 package utils
 
 import (
+	"context"
+	"flag"
+	"fmt"
 	"github.com/labstack/gommon/log"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/x/network/connstring"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
 	"regexp"
+	"time"
 )
 
 type H map[string]interface{}
@@ -45,10 +49,41 @@ func GetMongoUrl() string {
 	return viper.GetString("mongo.migrations.databaseUrl")
 }
 
+func GetMongoConnectTimeout() time.Duration {
+	return viper.GetDuration("mongo.migrations.connect.timeout")
+}
+
 func GetMongoDatabase(client *mongo.Client) *mongo.Database {
 	return client.Database(GetMongoDbName(GetMongoUrl()))
+}
+
+func InitViper(defaultLocation string) {
+	configFile := flag.String("config", defaultLocation, "Path to config file")
+	flag.Parse()
+	viper.SetConfigFile(*configFile)
+	// call multiple times to add many search paths
+	viper.SetEnvPrefix("BLOG_STORE")
+	viper.AutomaticEnv()
+	// Find and read the config file
+	if err := viper.ReadInConfig(); err != nil { // Handle errors reading the config file
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
 }
 
 const USER_ID = "iserId"
 const USER_LOGIN = "userLogin"
 const DOWNLOAD_PREFIX = "/download/"
+
+func GetMongoClient() *mongo.Client {
+	mongoUrl := GetMongoUrl()
+	client, err := mongo.NewClient(mongoUrl)
+	if err != nil {
+		log.Panicf("Error during create mongo client: %v", err)
+	}
+	ctx, _ := context.WithTimeout(context.Background(), GetMongoConnectTimeout())
+	err = client.Connect(ctx)
+	if err != nil {
+		log.Panicf("Error during connect: %v", err)
+	}
+	return client
+}

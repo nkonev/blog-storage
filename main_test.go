@@ -2,12 +2,9 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"github.com/labstack/echo"
 	"github.com/labstack/gommon/log"
-	"github.com/mongodb/mongo-go-driver/mongo"
-	"github.com/mongodb/mongo-go-driver/x/network/connstring"
 	"github.com/nkonev/blog-store/client"
 	"github.com/nkonev/blog-store/handlers"
 	"github.com/nkonev/blog-store/utils"
@@ -25,7 +22,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestMain(m *testing.M) {
@@ -40,27 +36,10 @@ func shutdown() {
 }
 
 func setup() {
-	initViper()
+	utils.InitViper("./config-dev/config.yml")
 
 	log.Info("Set up")
-	mongoUrl := utils.GetMongoUrl()
-	client, err := mongo.NewClient(mongoUrl)
-	if err != nil {
-		log.Panicf("Error during create mongo client: %v", err)
-	}
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	err = client.Connect(ctx)
-	if err != nil {
-		log.Panicf("Error during connect: %v", err)
-	}
-
-	uri, err := connstring.Parse(mongoUrl)
-
-	err = client.Database(uri.Database).Drop(context.Background())
-	if err != nil {
-		log.Panicf("Error during dropping database: '%v'", err)
-	}
-	log.Infof("Mongo database '%v' successfully dropped", uri.Database)
+	utils.DropMongo()
 
 	mc := configureMinio()
 	infos, err := mc.ListBuckets()
