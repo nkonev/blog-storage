@@ -2,9 +2,9 @@ package mongo_lock
 
 import (
 	"context"
-	"github.com/nkonev/blog-store/.vendor-new/github.com/labstack/gommon/log"
-	"github.com/nkonev/blog-store/.vendor-new/github.com/stretchr/testify/assert"
+	"github.com/labstack/gommon/log"
 	"github.com/nkonev/blog-store/utils"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"sync"
 	"testing"
