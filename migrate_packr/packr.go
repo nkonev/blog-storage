@@ -1,4 +1,4 @@
-package packr
+package migrate_packr
 
 import (
 	"bytes"

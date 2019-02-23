@@ -1,4 +1,4 @@
-package packr
+package migrate_packr
 
 import (
 	"github.com/gobuffalo/packr/v2"

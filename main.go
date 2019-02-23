@@ -22,7 +22,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
 	"github.com/minio/minio-go"
-	packr_migrate "github.com/nkonev/blog-store/packr"
+	"github.com/nkonev/blog-store/migrate_packr"
 )
 
 func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) *echo.Echo {
@@ -169,12 +169,12 @@ func configureHandler(m *minio.Client) *handlers.FsHandler {
 func configureMigrate() *migrate.Migrate {
 	box := packr.New("migrations", "./migrations")
 
-	d, err := packr_migrate.WithInstance(box)
+	d, err := migrate_packr.WithInstance(box)
 	if err != nil {
 		log.Panicf("Error during create migrator driver: %v", err)
 	}
 
-	m, err := migrate.NewWithSourceInstance(packr_migrate.PackrName, d, utils.GetMongoUrl())
+	m, err := migrate.NewWithSourceInstance(migrate_packr.PackrName, d, utils.GetMongoUrl())
 
 	if err != nil {
 		log.Panicf("Error during create migrator: %v", err)
