@@ -38,11 +38,11 @@ script:
     EXECUTABLE=./blog-store;
     IMAGE=nkonev/blog-store:latest;
     if [[ "$TRAVIS_BRANCH" == "master" && "$TRAVIS_TEST_RESULT" == "0" && "$TRAVIS_EVENT_TYPE" != "cron" ]]; then (
-      mkdir $BUILDDIR && mv $EXECUTABLE $BUILDDIR && cp ./Dockerfile .$BUILDDIR;
-      docker build -t $IMAGE $BUILDDIR;
-      docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD";
-      docker push $IMAGE;
-      ssh -o "BatchMode yes" -o StrictHostKeyChecking=no -q $CONNECT_LINE $UPDATE_COMMAND;
+      mkdir $BUILDDIR && mv $EXECUTABLE $BUILDDIR && cp ./Dockerfile .$BUILDDIR && \
+      docker build -t $IMAGE $BUILDDIR && \
+      docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD" && \
+      docker push $IMAGE && \
+      ssh -o "BatchMode yes" -o StrictHostKeyChecking=no -q $CONNECT_LINE $UPDATE_COMMAND || exit 1
     ) else (
       echo "Won't push docker image and deploy";
     ) fi
