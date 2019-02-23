@@ -2,10 +2,13 @@ package mongo_lock
 
 import (
 	"context"
+	"fmt"
 	"github.com/labstack/gommon/log"
+	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/nkonev/blog-store/utils"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -59,6 +62,24 @@ func TestHangsOnLocked(t *testing.T) {
 	wg.Wait()
 }
 
+func hasIndex(coll *mongo.Collection, indexName string) bool {
+	cursor, e := coll.Indexes().List(context.TODO())
+	if e != nil {
+		log.Fatalf("error during listing indexes: %v", e)
+	}
+	var hasUniqueIndex bool
+	for cursor.Next(context.TODO()) {
+		bytes, e := cursor.DecodeBytes()
+		str := fmt.Sprintf("%v", bytes)
+		if strings.Contains(str, indexName) {
+			hasUniqueIndex = true
+			break
+		}
+		log.Infof("Indexes %v %v", str, e)
+	}
+	return hasUniqueIndex
+}
+
 func TestLockIsReleased(t *testing.T) {
 	mongoClient := utils.GetMongoClient()
 	defer mongoClient.Disconnect(context.TODO())
@@ -68,7 +89,12 @@ func TestLockIsReleased(t *testing.T) {
 
 	lock := NewMongoLock(mongoClient, testLock)
 
+	assert.False(t, hasIndex(coll, "unique_id"))
+
 	lock.AcquireLock()
+
+	assert.True(t, hasIndex(coll, "unique_id"))
+
 	one := coll.FindOne(context.TODO(), GetIdDoc())
 	raws, err := one.DecodeBytes()
 	if err != nil {
