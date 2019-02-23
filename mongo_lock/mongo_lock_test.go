@@ -64,6 +64,7 @@ func TestHangsOnLocked(t *testing.T) {
 
 func hasIndex(coll *mongo.Collection, indexName string) bool {
 	cursor, e := coll.Indexes().List(context.TODO())
+	defer cursor.Close(context.TODO())
 	if e != nil {
 		log.Fatalf("error during listing indexes: %v", e)
 	}
