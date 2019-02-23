@@ -32,6 +32,7 @@ script:
   - (cd frontend; npm run prod;)
   # https://medium.com/@diogok/on-golang-static-binaries-cross-compiling-and-plugins-1aed33499671
   - CGO_ENABLED=0 packr2 build -ldflags '-w -extldflags "-static"'
+  - rm -rf $TRAVIS_BUILD_DIR/frontend/node_modules/.cache
   - ls -lah
   - if [[ "$TRAVIS_BRANCH" == "master" && "$TRAVIS_TEST_RESULT" == "0" && "$TRAVIS_EVENT_TYPE" != "cron" ]]; then (
       mkdir ./build && mv ./blog-store ./build && cp ./Dockerfile ./build;
