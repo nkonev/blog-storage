@@ -107,12 +107,12 @@ func (h *FsHandler) ensureBucket(bucketName, location string) {
 		// Check to see if we already own this bucket (which happens if you run this twice)
 		exists, err := h.minio.BucketExists(bucketName)
 		if err == nil && exists {
-			log.Printf("Bucket '%s' already present", bucketName)
+			log.Debugf("Bucket '%s' already present", bucketName)
 		} else {
 			log.Fatal(err)
 		}
 	} else {
-		log.Printf("Successfully created bucket '%s'", bucketName)
+		log.Infof("Successfully created bucket '%s'", bucketName)
 	}
 
 }
