@@ -62,6 +62,69 @@ func TestHangsOnLocked(t *testing.T) {
 	wg.Wait()
 }
 
+func TestLockIsValid(t *testing.T) {
+	mongoClient := utils.GetMongoClient()
+	defer mongoClient.Disconnect(context.TODO())
+
+	testLock := "test_locked_2"
+
+	lock := NewMongoLock(mongoClient, testLock)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	counter := 0
+
+	go func() {
+		defer wg.Done()
+		lock.AcquireLock()
+		for i := 0; i < 1000; i++ {
+			counter++
+		}
+		lock.ReleaseLock()
+	}()
+	go func() {
+		defer wg.Done()
+		lock.AcquireLock()
+		for i := 0; i < 1000; i++ {
+			counter++
+		}
+		lock.ReleaseLock()
+	}()
+	wg.Wait()
+
+	assert.Equal(t, 2000, counter)
+
+}
+
+func TestLockIsValidForHighConcurrentEnvironment(t *testing.T) {
+	mongoClient := utils.GetMongoClient()
+	defer mongoClient.Disconnect(context.TODO())
+
+	testLock := "test_locked_2"
+
+	lock := NewMongoLock(mongoClient, testLock)
+
+	instances := 1000
+	var wg sync.WaitGroup
+	wg.Add(instances)
+
+	counter := 0
+
+	for i := 0; i < instances; i++ {
+		go func() {
+			defer wg.Done()
+			lock.AcquireLock()
+			counter++
+			lock.ReleaseLock()
+		}()
+	}
+
+	wg.Wait()
+
+	assert.Equal(t, instances, counter)
+}
+
 func hasIndex(coll *mongo.Collection, indexName string) bool {
 	cursor, e := coll.Indexes().List(context.TODO())
 	defer cursor.Close(context.TODO())
@@ -85,7 +148,7 @@ func TestLockIsReleased(t *testing.T) {
 	mongoClient := utils.GetMongoClient()
 	defer mongoClient.Disconnect(context.TODO())
 
-	testLock := "test_locked_2"
+	testLock := "test_locked_3"
 	coll := mongoClient.Database(utils.GetMongoDbName(utils.GetMongoUrl())).Collection(testLock)
 
 	lock := NewMongoLock(mongoClient, testLock)
