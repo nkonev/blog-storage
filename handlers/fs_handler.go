@@ -40,14 +40,14 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 	for objInfo := range h.minio.ListObjects(bucket, "", false, doneCh) {
 		log.Debugf("Object '%v'", objInfo.Key)
 
-		var Url *url.URL
-		Url, err := url.Parse(h.serverUrl)
+		var downloadUrl *url.URL
+		downloadUrl, err := url.Parse(h.serverUrl)
 		if err != nil {
 			return err
 		}
-		Url.Path += utils.DOWNLOAD_PREFIX + objInfo.Key
+		downloadUrl.Path += utils.DOWNLOAD_PREFIX + objInfo.Key
 
-		list = append(list, FileInfo{Filename: objInfo.Key, Url: Url.String(), Size: objInfo.Size})
+		list = append(list, FileInfo{Filename: objInfo.Key, Url: downloadUrl.String(), Size: objInfo.Size})
 	}
 
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "files": list})
