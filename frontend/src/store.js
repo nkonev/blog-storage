@@ -3,21 +3,21 @@ import Vuex from 'vuex'
 
 Vue.use(Vuex);
 
-export const GET_UNAUTHORIZED = 'getUser';
-export const SET_UNAUTHORIZED = 'setUser';
+export const GET_UNAUTHENTICATED = 'getUnauthenticated';
+export const SET_UNAUTHENTICATED = 'setUnauthenticated';
 
 const store = new Vuex.Store({
     state: {
-        unauthorized: false,
+        unauthenticated: false,
     },
     mutations: {
-        [SET_UNAUTHORIZED](state, payload) {
-            state.unauthorized = payload;
+        [SET_UNAUTHENTICATED](state, payload) {
+            state.unauthenticated = payload;
         },
     },
     getters: {
-        [GET_UNAUTHORIZED](state) {
-            return state.unauthorized;
+        [GET_UNAUTHENTICATED](state) {
+            return state.unauthenticated;
         },
     },
     actions: {

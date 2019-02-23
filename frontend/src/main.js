@@ -2,7 +2,7 @@ import Vue from 'vue'
 import App from './App.vue'
 import VueResource from 'vue-resource'
 import Notifications from './notifications'
-import store, {SET_UNAUTHORIZED} from './store'
+import store, {SET_UNAUTHENTICATED} from './store'
 Vue.config.productionTip = false;
 Vue.use(VueResource);
 
@@ -21,13 +21,13 @@ Vue.http.interceptors.push((request, next) => {
   next((response) => {
     if (!(response.status >= 200 && response.status < 300)) {
       if (response.status===401){
-        store.commit(SET_UNAUTHORIZED, true);
+        store.commit(SET_UNAUTHENTICATED, true);
       } else {
         console.error("Unexpected error", response);
         Notifications.error(request.method, request.url, response.status);
       }
     } else {
-      store.commit(SET_UNAUTHORIZED, false);
+      store.commit(SET_UNAUTHENTICATED, false);
     }
   });
 });

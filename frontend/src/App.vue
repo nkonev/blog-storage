@@ -1,8 +1,8 @@
 <template>
     <div id="app" class="upload-drag">
 
-        <div v-if="unauthorized" class="unauthorized">
-            <h4>Unauthorized</h4>
+        <div v-if="unauthenticated" class="unauthenticated">
+            <h4>Unauthenticated</h4>
             <button @click="refresh()">Refresh</button>
         </div>
         <template v-else>
@@ -72,21 +72,8 @@
 <script>
     import Vue from 'vue'
     import FileUpload from 'vue-upload-component'
-    import store, {GET_UNAUTHORIZED} from "./store"
+    import store, {GET_UNAUTHENTICATED} from "./store"
     import {mapGetters} from 'vuex'
-
-    Vue.filter('formatSize', function (size) {
-        if (size > 1024 * 1024 * 1024 * 1024) {
-            return (size / 1024 / 1024 / 1024 / 1024).toFixed(2) + ' TB'
-        } else if (size > 1024 * 1024 * 1024) {
-            return (size / 1024 / 1024 / 1024).toFixed(2) + ' GB'
-        } else if (size > 1024 * 1024) {
-            return (size / 1024 / 1024).toFixed(2) + ' MB'
-        } else if (size > 1024) {
-            return (size / 1024).toFixed(2) + ' KB'
-        }
-        return size.toString() + ' B'
-    });
 
     export default {
         name: 'App',
@@ -95,6 +82,20 @@
                 files: [],
                 uploadFiles: [],
                 bucketUsed: 0
+            }
+        },
+        filters: {
+            formatSize: function (size) {
+                if (size > 1024 * 1024 * 1024 * 1024) {
+                    return (size / 1024 / 1024 / 1024 / 1024).toFixed(2) + ' TB'
+                } else if (size > 1024 * 1024 * 1024) {
+                    return (size / 1024 / 1024 / 1024).toFixed(2) + ' GB'
+                } else if (size > 1024 * 1024) {
+                    return (size / 1024 / 1024).toFixed(2) + ' MB'
+                } else if (size > 1024) {
+                    return (size / 1024).toFixed(2) + ' KB'
+                }
+                return size.toString() + ' B'
             }
         },
         methods: {
@@ -151,7 +152,7 @@
             FileUpload,
         },
         computed: {
-            ...mapGetters({unauthorized: GET_UNAUTHORIZED}), // unauthorized is here, 'GET_UNAUTHORIZED' -- in store.js
+            ...mapGetters({unauthenticated: GET_UNAUTHENTICATED}), // unauthorized is here, 'GET_UNAUTHORIZED' -- in store.js
         },
         store,
     }
@@ -184,6 +185,16 @@
             cursor pointer
         }
     }
+
+    .btn-select:hover {
+        color white
+        background-color #003eff
+        border-radius 2px
+        opacity: 0.8
+        z-index 1000
+        filter brightness(2)
+    }
+
 
 </style>
 
@@ -231,9 +242,15 @@
             }
         }
 
-        .unauthorized {
-            button {
-                width 100%
+        .unauthenticated {
+            display flex
+            flex-direction column
+            align-items center
+            justify-content center
+            height 100%
+            width 100%
+            h4 {
+                margin 0 0 0.8em 0
             }
         }
     }
