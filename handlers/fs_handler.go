@@ -36,7 +36,7 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 
 	log.Debugf("Listing bucket '%v':", bucket)
 
-	var buffer []FileInfo = make([]FileInfo, 0)
+	var list []FileInfo = make([]FileInfo, 0)
 	for objInfo := range h.minio.ListObjects(bucket, "", false, doneCh) {
 		log.Debugf("Object '%v'", objInfo.Key)
 
@@ -47,10 +47,10 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 		}
 		Url.Path += utils.DOWNLOAD_PREFIX + objInfo.Key
 
-		buffer = append(buffer, FileInfo{Filename: objInfo.Key, Url: Url.String(), Size: objInfo.Size})
+		list = append(list, FileInfo{Filename: objInfo.Key, Url: Url.String(), Size: objInfo.Size})
 	}
 
-	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "files": buffer})
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "files": list})
 }
 
 const FormFile = "file"
