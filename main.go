@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/nkonev/blog-store/client"
 	"github.com/nkonev/blog-store/handlers"
 	"github.com/nkonev/blog-store/mongo_lock"
@@ -46,6 +47,8 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 	e.GET(utils.DOWNLOAD_PREFIX+":file", fsh.DownloadHandler)
 	e.POST("/move/:from/:to", fsh.MoveHandler)
 	e.DELETE("/delete/:file", fsh.DeleteHandler)
+	e.PUT("/publish/:file", fsh.Publish)
+	e.GET("/public/"+utils.USER_PREFIX+":userId/:file", fsh.PublicDownloadHandler)
 
 	e.Pre(getStaticMiddleware(static))
 
@@ -148,6 +151,7 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 func main() {
 	utils.InitViper("./config-dev/config.yml")
 	container := dig.New()
+	container.Provide(configureMongo)
 	container.Provide(configureMinio)
 	container.Provide(configureHandler)
 	container.Provide(configureEcho)
@@ -162,8 +166,8 @@ func main() {
 	log.Infof("Exit program")
 }
 
-func configureHandler(m *minio.Client) *handlers.FsHandler {
-	return handlers.NewFsHandler(m, viper.GetString("server.url"))
+func configureHandler(minio *minio.Client, mongo *mongo.Client) *handlers.FsHandler {
+	return handlers.NewFsHandler(minio, viper.GetString("server.url"), mongo)
 }
 
 func configureMigrate() *migrate.Migrate {
@@ -218,6 +222,10 @@ func configureMinio() *minio.Client {
 	}
 
 	return minioClient
+}
+
+func configureMongo() *mongo.Client {
+	return utils.GetMongoClient()
 }
 
 // rely on viper import and it's configured by

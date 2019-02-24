@@ -1,23 +1,28 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 	"github.com/minio/minio-go"
+	"github.com/mongodb/mongo-go-driver/bson"
+	"github.com/mongodb/mongo-go-driver/mongo"
+	"github.com/mongodb/mongo-go-driver/mongo/options"
 	"github.com/nkonev/blog-store/utils"
 	"net/http"
 	"net/url"
 	"strconv"
 )
 
-func NewFsHandler(minio *minio.Client, serverUrl string) *FsHandler {
-	return &FsHandler{minio: minio, serverUrl: serverUrl}
+func NewFsHandler(minio *minio.Client, serverUrl string, client *mongo.Client) *FsHandler {
+	return &FsHandler{minio: minio, serverUrl: serverUrl, mongo: client}
 }
 
 type FsHandler struct {
 	serverUrl string
 	minio     *minio.Client
+	mongo     *mongo.Client
 }
 
 type FileInfo struct {
@@ -87,8 +92,13 @@ func getBucketName(c echo.Context) string {
 	if !ok {
 		log.Errorf("Error during get(cast) userId")
 	}
-	return fmt.Sprintf("user%v", i)
+	return getBucketNameInt(i)
 }
+
+func getBucketNameInt(userId interface{}) string {
+	return fmt.Sprintf(utils.USER_PREFIX+"%v", userId)
+}
+
 
 func getBucketLocation(c echo.Context) string {
 	return "europe-east"
@@ -117,27 +127,61 @@ func (h *FsHandler) ensureBucket(bucketName, location string) {
 
 }
 
+
+func (h *FsHandler) download(bucketName, objName string) func(c echo.Context) error {
+	return func(c echo.Context) error {
+		info, e := h.minio.StatObject(bucketName, objName, minio.StatObjectOptions{})
+		if e != nil {
+			return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
+		}
+
+		c.Response().Header().Set(echo.HeaderContentLength, strconv.FormatInt(info.Size, 10))
+		c.Response().Header().Set(echo.HeaderContentType, info.ContentType)
+
+		object, e := h.minio.GetObject(bucketName, objName, minio.GetObjectOptions{})
+		defer object.Close()
+		if e != nil {
+			return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
+		}
+
+		return c.Stream(http.StatusOK, info.ContentType, object)
+	}
+}
+
+
 func (h *FsHandler) DownloadHandler(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
 
 	objName := getFileName(c)
 
-	info, e := h.minio.StatObject(bucketName, objName, minio.StatObjectOptions{})
-	if e != nil {
-		return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
-	}
-
-	c.Response().Header().Set(echo.HeaderContentLength, strconv.FormatInt(info.Size, 10))
-	c.Response().Header().Set(echo.HeaderContentType, info.ContentType)
-
-	object, e := h.minio.GetObject(bucketName, objName, minio.GetObjectOptions{})
-	defer object.Close()
-	if e != nil {
-		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
-	}
-
-	return c.Stream(http.StatusOK, info.ContentType, object)
+	return h.download(bucketName, objName)(c)
 }
+
+func getPublishDocument(objName string) bson.D {
+	return bson.D{{"_id", objName}}
+}
+
+func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
+	database := utils.GetMongoDatabase(h.mongo)
+
+	bucketName := getBucketNameInt(c.Param("userId"))
+
+	objName := getFileName(c)
+
+	findResult := database.Collection(bucketName).FindOne(context.TODO(), getPublishDocument(objName))
+	if findResult.Err() != nil {
+		log.Errorf("Error during querying record from mongo")
+		return findResult.Err()
+	}
+	err := findResult.Decode(nil)
+
+	if err == mongo.ErrNoDocuments {
+		return c.JSON(http.StatusNotFound, &utils.H{"status": "access fail"})
+	}
+
+	return h.download(bucketName, objName)(c)
+}
+
 
 func getFileName(context echo.Context) string {
 	return context.Param("file")
@@ -197,4 +241,28 @@ func (h *FsHandler) Limits(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "used": totalBucketConsumption})
+}
+
+func (h *FsHandler) Publish(c echo.Context) error {
+	bucketName := h.ensureAndGetBucket(c)
+
+	objName := getFileName(c)
+	objName, err := url.PathUnescape(objName)
+	if err != nil {
+		return err
+	}
+	_, e := h.minio.StatObject(bucketName, objName, minio.StatObjectOptions{})
+	if e != nil {
+		return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
+	}
+
+	database := utils.GetMongoDatabase(h.mongo)
+
+	upsert := true
+	_, err2 := database.Collection(bucketName).UpdateOne(context.TODO(), getPublishDocument(objName), bson.D{}, &options.UpdateOptions{Upsert: &upsert})
+	if err2 != nil {
+		log.Errorf("Error during publishing '%v' : %v", objName, err)
+		return err2
+	}
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "published": true})
 }

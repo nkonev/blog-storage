@@ -74,6 +74,7 @@ func InitViper(defaultLocation string) {
 const USER_ID = "iserId"
 const USER_LOGIN = "userLogin"
 const DOWNLOAD_PREFIX = "/download/"
+const USER_PREFIX = "user"
 
 func GetMongoClient() *mongo.Client {
 	mongoUrl := GetMongoUrl()

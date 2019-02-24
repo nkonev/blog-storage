@@ -93,6 +93,7 @@ func runTest(container *dig.Container, test func(e *echo.Echo)) {
 
 func setUpContainerForIntegrationTests() *dig.Container {
 	container := dig.New()
+	container.Provide(configureMongo)
 	container.Provide(configureMinio)
 	container.Provide(configureHandler)
 	container.Provide(configureEcho)
@@ -436,6 +437,71 @@ func TestUploadMove(t *testing.T) {
 				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
 			req.Header = headers
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
+		}
+
+	})
+}
+
+func TestUploadPublish(t *testing.T) {
+	container := setUpContainerForIntegrationTests()
+	testServer := makeOkAuthServer()
+	defer func() { testServer.Close() }()
+	viper.Set(AUTH_URL, testServer.URL)
+	container.Provide(client.NewRestClient)
+
+	runTest(container, func(e *echo.Echo) {
+		path := "docker-compose.yml"
+		fileName := "publish_" + uuid.NewV4().String() + ".yml"
+		{
+			dat := getBytea(path)
+
+			body, contentType := getMultipart(dat, fileName)
+
+			req := test.NewRequest("POST", "/upload", body)
+			headers := map[string][]string{
+				echo.HeaderContentType: {contentType},
+				echo.HeaderCookie:      []string{SESSION_COOKIE + "=" + "sessionCookie"},
+			}
+			req.Header = headers
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+		}
+
+		{
+			req := test.NewRequest("GET", "/public/user1/"+fileName, nil)
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+		}
+
+		{
+			req := test.NewRequest("PUT", "/publish/"+fileName, nil)
+			headers := map[string][]string{
+				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
+			}
+			req.Header = headers
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+		}
+
+		{
+			req := test.NewRequest("GET", "/public/user1/"+fileName, nil)
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
