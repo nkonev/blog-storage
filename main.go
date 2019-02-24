@@ -169,12 +169,12 @@ func configureHandler(m *minio.Client) *handlers.FsHandler {
 func configureMigrate() *migrate.Migrate {
 	box := packr.New("migrations", "./migrations")
 
-	d, err := migrate_packr.WithInstance(box)
+	driver, err := migrate_packr.WithInstance(box)
 	if err != nil {
 		log.Panicf("Error during create migrator driver: %v", err)
 	}
 
-	m, err := migrate.NewWithSourceInstance(migrate_packr.PackrName, d, utils.GetMongoUrl())
+	m, err := migrate.NewWithSourceInstance(migrate_packr.PackrName, driver, utils.GetMongoUrl())
 
 	if err != nil {
 		log.Panicf("Error during create migrator: %v", err)
@@ -192,6 +192,7 @@ func runMigrate(m *migrate.Migrate) {
 	lock.AcquireLock()
 
 	err := m.Up()
+	defer m.Close()
 	if err != nil {
 		if err.Error() == "no change" {
 			log.Info("Migration(s) already applied")
