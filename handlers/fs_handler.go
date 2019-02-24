@@ -99,7 +99,6 @@ func getBucketNameInt(userId interface{}) string {
 	return fmt.Sprintf(utils.USER_PREFIX+"%v", userId)
 }
 
-
 func getBucketLocation(c echo.Context) string {
 	return "europe-east"
 }
@@ -127,7 +126,6 @@ func (h *FsHandler) ensureBucket(bucketName, location string) {
 
 }
 
-
 func (h *FsHandler) download(bucketName, objName string) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		info, e := h.minio.StatObject(bucketName, objName, minio.StatObjectOptions{})
@@ -147,7 +145,6 @@ func (h *FsHandler) download(bucketName, objName string) func(c echo.Context) er
 		return c.Stream(http.StatusOK, info.ContentType, object)
 	}
 }
-
 
 func (h *FsHandler) DownloadHandler(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
@@ -181,7 +178,6 @@ func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
 
 	return h.download(bucketName, objName)(c)
 }
-
 
 func getFileName(context echo.Context) string {
 	return context.Param("file")
@@ -265,4 +261,21 @@ func (h *FsHandler) Publish(c echo.Context) error {
 		return err2
 	}
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "published": true})
+}
+
+func (h *FsHandler) DeletePublish(c echo.Context) error {
+	bucketName := h.ensureAndGetBucket(c)
+
+	objName := getFileName(c)
+	objName, err := url.PathUnescape(objName)
+	if err != nil {
+		return err
+	}
+
+	database := utils.GetMongoDatabase(h.mongo)
+	_, err = database.Collection(bucketName).DeleteOne(context.TODO(), getPublishDocument(objName), &options.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "unpublished": true})
 }

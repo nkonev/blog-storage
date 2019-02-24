@@ -511,5 +511,27 @@ func TestUploadPublish(t *testing.T) {
 			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
 		}
 
+		{
+			req := test.NewRequest("DELETE", "/publish/"+fileName, nil)
+			headers := map[string][]string{
+				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
+			}
+			req.Header = headers
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+		}
+
+		{
+			req := test.NewRequest("GET", "/public/user1/"+fileName, nil)
+			rec := test.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusNotFound, rec.Code)
+		}
+
 	})
 }

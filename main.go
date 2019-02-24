@@ -49,6 +49,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 	e.DELETE("/delete/:file", fsh.DeleteHandler)
 	e.PUT("/publish/:file", fsh.Publish)
 	e.GET("/public/"+utils.USER_PREFIX+":userId/:file", fsh.PublicDownloadHandler)
+	e.DELETE("/publish/:file", fsh.DeletePublish)
 
 	e.Pre(getStaticMiddleware(static))
 
