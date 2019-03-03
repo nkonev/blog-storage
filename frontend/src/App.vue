@@ -38,7 +38,7 @@
                         </template>
                     </div>
 
-                    <div class="limits">Used: {{ bucketUsed | formatSize}}</div>
+                    <div class="limits">Used: {{ bucketUsed | formatSize}}; Available: {{bucketAvailable | formatSize}}</div>
                 </div>
 
                 <ul v-if="uploadFiles.length">
@@ -109,7 +109,8 @@
             return {
                 files: [],
                 uploadFiles: [],
-                bucketUsed: 0
+                bucketUsed: 0,
+                bucketAvailable: 0
             }
         },
         filters: {
@@ -135,6 +136,7 @@
                     console.error("error during get files");
                 }).then(this.$http.get('/limits').then(value => {
                     this.bucketUsed = value.data.used;
+                    this.bucketAvailable = value.data.available;
                 }, reason => {
                     console.error("error during get bucket stat");
                 }))

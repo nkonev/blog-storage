@@ -26,3 +26,10 @@ auth:
   url: "http://127.0.0.1:8080/api/profile"
   exclude:
     - "/public.*"
+
+limits:
+  default:
+    per:
+      user:
+        # 512 megabytes
+        max: 536870912

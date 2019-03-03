@@ -10,6 +10,8 @@ import (
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/mongo/options"
 	"github.com/nkonev/blog-store/utils"
+	"github.com/spf13/viper"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -77,17 +79,34 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 		log.Errorf("Error during extracting form %v parameter", FormFile)
 		return err
 	}
+
+	bucketName := h.ensureAndGetBucket(c)
+
+	// check limit
+	consumption := h.calcUserFilesConsumption(bucketName)
+	userId, ok := c.Get(utils.USER_ID).(int)
+	if !ok {
+		log.Errorf("Error during get(cast) userId")
+	}
+	maxAllowed, err := h.getMaxAllowedConsumption(userId)
+	if err != nil {
+		log.Errorf("Error during calculating max allowed %v", err)
+		return err
+	}
+	if consumption+file.Size > maxAllowed {
+		log.Infof("Upload too large %v+%v>%v bytes", consumption, file.Size, maxAllowed)
+		return c.JSON(http.StatusRequestEntityTooLarge, &utils.H{"status": "fail"})
+	}
+
+	contentType := file.Header.Get("Content-Type")
+
+	log.Debugf("Determined content type: %v", contentType)
+
 	src, err := file.Open()
 	if err != nil {
 		return err
 	}
 	defer src.Close()
-
-	bucketName := h.ensureAndGetBucket(c)
-
-	contentType := file.Header.Get("Content-Type")
-
-	log.Debugf("Determined content type: %v", contentType)
 
 	if _, err := h.minio.PutObject(bucketName, file.Filename, src, file.Size, minio.PutObjectOptions{ContentType: contentType}); err != nil {
 		log.Errorf("Error during upload object: %v", err)
@@ -235,6 +254,21 @@ func (h *FsHandler) DeleteHandler(c echo.Context) error {
 func (h *FsHandler) Limits(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
 
+	userId, ok := c.Get(utils.USER_ID).(int)
+	if !ok {
+		log.Errorf("Error during get(cast) userId")
+	}
+
+	max, e := h.getMaxAllowedConsumption(userId)
+	if e != nil {
+		return e
+	}
+	consumption := h.calcUserFilesConsumption(bucketName)
+
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "used": h.calcUserFilesConsumption(bucketName), "available": max - consumption})
+}
+
+func (h *FsHandler) calcUserFilesConsumption(bucketName string) int64 {
 	var totalBucketConsumption int64
 
 	recursive := true
@@ -245,8 +279,7 @@ func (h *FsHandler) Limits(c echo.Context) error {
 	for objInfo := range h.minio.ListObjects(bucketName, "", recursive, doneCh) {
 		totalBucketConsumption += objInfo.Size
 	}
-
-	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "used": totalBucketConsumption})
+	return totalBucketConsumption
 }
 
 func (h *FsHandler) getPublicUrl(bucketName, objName string) string {
@@ -277,12 +310,13 @@ func (h *FsHandler) Publish(c echo.Context) error {
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "published": true, "url": h.getPublicUrl(getBucketName(c), objName)})
 }
 
-func (h *FsHandler) isPublished(bucketName, objName string) (bool, error) {
+func (h *FsHandler) isDocumentExists(collection string, request interface{}, opts ...*options.FindOneOptions) (bool, error) {
 	database := utils.GetMongoDatabase(h.mongo)
 
-	res := database.Collection(bucketName).FindOne(context.TODO(), getPublishDocument(objName), &options.FindOneOptions{})
+	// https://siongui.github.io/2017/03/13/go-pass-slice-or-array-as-variadic-parameter/#id12
+	res := database.Collection(collection).FindOne(context.TODO(), request, opts[:]...)
 	if res.Err() != nil {
-		log.Errorf("Error during find '%v' : %v", objName, res.Err())
+		log.Errorf("Error during find '%v' : %v", request, res.Err())
 		return false, res.Err()
 	}
 
@@ -292,12 +326,17 @@ func (h *FsHandler) isPublished(bucketName, objName string) (bool, error) {
 		if e == mongo.ErrNoDocuments {
 			return false, nil
 		} else {
-			log.Errorf("Error during DecodeBytes '%v' : %v", objName, res.Err())
+			log.Errorf("Error during DecodeBytes '%v' : %v", request, res.Err())
 			return false, e
 		}
 	} else {
 		return true, nil
 	}
+
+}
+
+func (h *FsHandler) isPublished(bucketName, objName string) (bool, error) {
+	return h.isDocumentExists(bucketName, getPublishDocument(objName), &options.FindOneOptions{})
 }
 
 func (h *FsHandler) DeletePublish(c echo.Context) error {
@@ -315,4 +354,17 @@ func (h *FsHandler) DeletePublish(c echo.Context) error {
 		return err
 	}
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "unpublished": true})
+}
+
+func (h *FsHandler) getMaxAllowedConsumption(userId int) (int64, error) {
+	b, e := h.isDocumentExists("limits", bson.D{{"_id", userId}})
+	if e != nil {
+		return 0, e
+	}
+
+	if b {
+		return math.MaxInt64, nil
+	} else {
+		return viper.GetInt64("limits.default.per.user.max"), nil
+	}
 }
