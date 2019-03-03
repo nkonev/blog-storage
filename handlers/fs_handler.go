@@ -193,13 +193,17 @@ func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
 	bucketName := getBucketNameInt(c.Param("userId"))
 
 	objName := getFileName(c)
+	objName, err := url.PathUnescape(objName)
+	if err != nil {
+		return err
+	}
 
 	findResult := database.Collection(bucketName).FindOne(context.TODO(), getPublishDocument(objName))
 	if findResult.Err() != nil {
 		log.Errorf("Error during querying record from mongo")
 		return findResult.Err()
 	}
-	err := findResult.Decode(nil)
+	err = findResult.Decode(nil)
 
 	if err == mongo.ErrNoDocuments {
 		return c.JSON(http.StatusNotFound, &utils.H{"status": "access fail"})
