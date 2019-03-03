@@ -157,7 +157,7 @@
 
                     this.$modal.show(DIALOG, {
                         title: 'Published',
-                        text: `Public <a href="${url}" target="_blank">link</a>`,
+                        text: `<a href="${url}" target="_blank">Public link</a>`,
                         buttons: [
                             {
                                 title: 'Close',
@@ -184,7 +184,7 @@
                     title: 'Info',
                     text: `<p>${file.filename}</p>
                            <p>${ formatSize(file.size)}</p>
-                           ${file.publicUrl ? '<p>Public <a href="' +file.publicUrl +'" target="_blank">link</a></p>' : ''}
+                           ${file.publicUrl ? '<p><a href="' +file.publicUrl +'" target="_blank">Public link</a></p>' : ''}
  `,
                     buttons: [
                         {
