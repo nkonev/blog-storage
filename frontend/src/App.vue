@@ -63,7 +63,6 @@
                 <ul class="file-list">
                     <li v-for="file in files" :key="file.filename"><a :href="file.url" target="_blank">{{file.filename}}</a> -
                         <span>{{file.size | formatSize}}</span>
-                        <span class="btn-delete" @click.prevent="deleteFile(file.filename)">[x]</span>
                         <span class="btn-info" @click.prevent="infoFile(file)">[i]</span>
                         <template v-if="file.publicUrl">
                             <span class="btn-info" @click.prevent="unshareFile(file.filename)">[unshare]</span>
@@ -71,6 +70,7 @@
                         <template v-else>
                             <span class="btn-info" @click.prevent="shareFile(file.filename)">[share]</span>
                         </template>
+                        <span class="btn-delete" @click.prevent="deleteFile(file.filename)">[x]</span>
                     </li>
                 </ul>
             </div>
