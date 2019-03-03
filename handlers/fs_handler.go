@@ -26,9 +26,10 @@ type FsHandler struct {
 }
 
 type FileInfo struct {
-	Filename string `json:"filename"`
-	Url      string `json:"url"`
-	Size     int64  `json:"size"`
+	Filename  string `json:"filename"`
+	Url       string `json:"url"`
+	PublicUrl string `json:"publicUrl"`
+	Size      int64  `json:"size"`
 }
 
 func (h *FsHandler) LsHandler(c echo.Context) error {
@@ -52,7 +53,16 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 		}
 		downloadUrl.Path += utils.DOWNLOAD_PREFIX + objInfo.Key
 
-		list = append(list, FileInfo{Filename: objInfo.Key, Url: downloadUrl.String(), Size: objInfo.Size})
+		published, err := h.isPublished(bucket, objInfo.Key)
+		if err != nil {
+			return err
+		}
+		publicUrl := ""
+		if published {
+			publicUrl = h.getPublicUrl(bucket, objInfo.Key)
+		}
+		info := FileInfo{Filename: objInfo.Key, Url: downloadUrl.String(), Size: objInfo.Size, PublicUrl: publicUrl}
+		list = append(list, info)
 	}
 
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "files": list})
@@ -239,6 +249,10 @@ func (h *FsHandler) Limits(c echo.Context) error {
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "used": totalBucketConsumption})
 }
 
+func (h *FsHandler) getPublicUrl(bucketName, objName string) string {
+	return h.serverUrl + utils.PUBLIC_PREFIX + "/" + bucketName + "/" + objName
+}
+
 func (h *FsHandler) Publish(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
 
@@ -260,7 +274,30 @@ func (h *FsHandler) Publish(c echo.Context) error {
 		log.Errorf("Error during publishing '%v' : %v", objName, err)
 		return err2
 	}
-	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "published": true})
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "published": true, "url": h.getPublicUrl(getBucketName(c), objName)})
+}
+
+func (h *FsHandler) isPublished(bucketName, objName string) (bool, error) {
+	database := utils.GetMongoDatabase(h.mongo)
+
+	res := database.Collection(bucketName).FindOne(context.TODO(), getPublishDocument(objName), &options.FindOneOptions{})
+	if res.Err() != nil {
+		log.Errorf("Error during find '%v' : %v", objName, res.Err())
+		return false, res.Err()
+	}
+
+	_, e := res.DecodeBytes()
+
+	if e != nil {
+		if e == mongo.ErrNoDocuments {
+			return false, nil
+		} else {
+			log.Errorf("Error during DecodeBytes '%v' : %v", objName, res.Err())
+			return false, e
+		}
+	} else {
+		return true, nil
+	}
 }
 
 func (h *FsHandler) DeletePublish(c echo.Context) error {
