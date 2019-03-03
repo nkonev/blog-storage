@@ -11,10 +11,10 @@ import (
 	"github.com/mongodb/mongo-go-driver/mongo/options"
 	"github.com/nkonev/blog-store/utils"
 	"github.com/spf13/viper"
-	"math"
 	"net/http"
 	"net/url"
 	"strconv"
+	"syscall"
 )
 
 func NewFsHandler(minio *minio.Client, serverUrl string, client *mongo.Client) *FsHandler {
@@ -363,7 +363,15 @@ func (h *FsHandler) getMaxAllowedConsumption(userId int) (int64, error) {
 	}
 
 	if b {
-		return math.MaxInt64, nil
+		var stat syscall.Statfs_t
+		wd := viper.GetString("limits.stat.dir")
+		err := syscall.Statfs(wd, &stat)
+		if err != nil {
+			return 0, err
+		}
+		// Available blocks * size per block = available space in bytes
+		u := int64(stat.Bavail * uint64(stat.Bsize))
+		return u, nil
 	} else {
 		return viper.GetInt64("limits.default.per.user.max"), nil
 	}

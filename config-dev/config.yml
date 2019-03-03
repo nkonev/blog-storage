@@ -28,6 +28,8 @@ auth:
     - "/public.*"
 
 limits:
+  stat:
+    dir: "."
   default:
     per:
       user:
