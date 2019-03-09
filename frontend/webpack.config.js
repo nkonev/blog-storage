@@ -22,7 +22,6 @@ module.exports = {
     context: srcDir,
 
     entry: {
-        vendor: ["vue"],
         main: "./main.js", // vue.js
     },
 
@@ -31,19 +30,6 @@ module.exports = {
         publicPath: "/build/", // url prefix
         filename: "[name].js",
         library: "[name]"
-    },
-
-    optimization: {
-        splitChunks: {
-            cacheGroups: {
-                default: false,
-                commons: {
-                    test: /[\\/]node_modules[\\/]/,
-                    name: "vendor",
-                    chunks: "all",
-                }
-            }
-        }
     },
 
     watch: devMode,
