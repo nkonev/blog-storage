@@ -60,7 +60,7 @@ func getStaticMiddleware(box *packr.Box) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			reqUrl := c.Request().RequestURI
-			if reqUrl == "/" || reqUrl == "/index.html" || reqUrl == "/favicon.ico" || strings.HasPrefix(reqUrl, "/build") || strings.HasPrefix(reqUrl, "/test-assets") {
+			if reqUrl == "/" || reqUrl == "/index.html" || reqUrl == "/admin_index.html" || reqUrl == "/favicon.ico" || strings.HasPrefix(reqUrl, "/build") || strings.HasPrefix(reqUrl, "/test-assets") {
 				http.FileServer(box).
 					ServeHTTP(c.Response().Writer, c.Request())
 				return nil

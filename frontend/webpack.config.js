@@ -23,6 +23,7 @@ module.exports = {
 
     entry: {
         main: "./main.js", // vue.js
+        admin_main: "./admin_main.js", // vue.js
     },
 
     output: {
