@@ -1,9 +1,10 @@
 <template>
     <v-app>
         <v-navigation-drawer
-                fixed
+                absolute
+                temporary
                 v-model="drawer"
-                right
+                left
                 app
         >
             <v-list dense>
@@ -27,10 +28,10 @@
         </v-navigation-drawer>
 
         <v-toolbar app dark class="primary">
-            <v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
+            <v-toolbar-side-icon @click.stop="drawer = !drawer" class="hidden-md-and-up"></v-toolbar-side-icon>
             <v-toolbar-title v-text="'Admin App'"></v-toolbar-title>
             <v-spacer/>
-            <v-toolbar-items>
+            <v-toolbar-items class="hidden-sm-and-down">
                 <v-btn color="success">Success</v-btn>
                 <v-btn flat>
                     <v-icon left v-html="'visibility'"></v-icon>
@@ -95,5 +96,10 @@
 </style>
 
 <style lang="stylus" scoped>
+    .application {
+        font-family: Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
 
+    }
 </style>
