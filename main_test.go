@@ -255,7 +255,7 @@ func TestUploadLs(t *testing.T) {
 	container.Provide(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
-		path := "docker-compose.yml"
+		path := "test-file.yml"
 		fileName := "ls_" + uuid.NewV4().String() + ".yml"
 		{
 			dat := getBytea(path)
@@ -317,8 +317,8 @@ func TestUploadDownloadDelete(t *testing.T) {
 	container.Provide(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
-		path := "docker-compose.yml"
-		fileName := "del_" + uuid.NewV4().String() + "docker+compose?.yml"
+		path := "test-file.yml"
+		fileName := "del_" + uuid.NewV4().String() + "test+file?.yml"
 		fileNameEncoded := url.PathEscape(fileName)
 		{
 			dat := getBytea(path)
@@ -395,7 +395,7 @@ func TestUploadMove(t *testing.T) {
 	container.Provide(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
-		path := "docker-compose.yml"
+		path := "test-file.yml"
 		oldFileName := "pre_mv_" + uuid.NewV4().String() + ".yml"
 		fileNameNew := "mv_" + uuid.NewV4().String() + ".yml"
 		{
@@ -457,7 +457,7 @@ func TestUploadPublish(t *testing.T) {
 	container.Provide(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
-		path := "docker-compose.yml"
+		path := "test-file.yml"
 		fileName := "publish_" + uuid.NewV4().String() + ".yml"
 		{
 			dat := getBytea(path)

@@ -28,7 +28,7 @@ services:
       - MINIO_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE
       - MINIO_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     volumes:
-      - minio_data:/data
+      - ./minio-data:/data
     command: ["server", "/data"]
     logging:
       driver: "json-file"
@@ -38,4 +38,3 @@ services:
 
 volumes:
   mongo_blog_store_data_dir:
-  minio_data:
