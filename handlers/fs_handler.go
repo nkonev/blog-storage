@@ -76,7 +76,7 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 
 	file, err := c.FormFile(FormFile)
 	if err != nil {
-		log.Errorf("Error during extracting form %v parameter", FormFile)
+		log.Errorf("Error during extracting form %v parameter: %v", FormFile, err)
 		return err
 	}
 
