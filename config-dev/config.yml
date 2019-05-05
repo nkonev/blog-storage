@@ -13,7 +13,7 @@ http:
 
 mongo:
   migrations:
-    databaseUrl: "mongodb://127.0.0.1:27017/testMigration?connect=single"
+    databaseUrl: "mongodb://127.0.0.1:27017/testMigration"
     connect:
       timeout: '10s'
 
