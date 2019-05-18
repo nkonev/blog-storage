@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/labstack/gommon/log"
 	"github.com/mongodb/mongo-go-driver/mongo"
-	"github.com/nkonev/blog-store/utils"
+	"github.com/nkonev/blog-storage/utils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"

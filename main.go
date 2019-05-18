@@ -8,10 +8,10 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/mongodb/mongo-go-driver/mongo"
-	"github.com/nkonev/blog-store/client"
-	"github.com/nkonev/blog-store/handlers"
-	"github.com/nkonev/blog-store/mongo_lock"
-	"github.com/nkonev/blog-store/utils"
+	"github.com/nkonev/blog-storage/client"
+	"github.com/nkonev/blog-storage/handlers"
+	"github.com/nkonev/blog-storage/mongo_lock"
+	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
 	"go.uber.org/dig"
 	"net/http"
@@ -23,7 +23,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
 	"github.com/minio/minio-go"
-	"github.com/nkonev/blog-store/migrate_packr"
+	"github.com/nkonev/blog-storage/migrate_packr"
 )
 
 func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) *echo.Echo {
