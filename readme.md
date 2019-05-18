@@ -39,5 +39,5 @@ packr2 build
 ```
 mkdir -p /var/tmp/blog-storage
 mkdir -p /mnt/minio/data
-docker stack deploy --compose-file /path/to/docker-compose.yml BLOGSTORESTACK
+docker stack deploy --compose-file /path/to/docker-compose.yml BLOGSTORAGESTACK
 ```
