@@ -35,8 +35,8 @@ script:
   - rm -rf $TRAVIS_BUILD_DIR/frontend/node_modules/.cache
   - ls -lah
   - BUILDDIR=./build;
-    EXECUTABLE=./blog-store;
-    IMAGE=nkonev/blog-store:latest;
+    EXECUTABLE=./blog-storage;
+    IMAGE=nkonev/blog-storage:latest;
     if [[ "$TRAVIS_BRANCH" == "master" && "$TRAVIS_TEST_RESULT" == "0" && "$TRAVIS_EVENT_TYPE" != "cron" ]]; then (
       mkdir $BUILDDIR && mv $EXECUTABLE $BUILDDIR && cp ./Dockerfile $BUILDDIR &&
       docker build -t $IMAGE $BUILDDIR &&

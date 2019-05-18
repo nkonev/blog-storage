@@ -1,8 +1,8 @@
 version: '3.7'
 
 services:
-  store:
-    image: nkonev/blog-store:latest
+  storage:
+    image: nkonev/blog-storage:latest
     deploy:
       replicas: 2
       update_config:
@@ -10,8 +10,8 @@ services:
         delay: 20s
       labels:
         - traefik.enable=true
-        - traefik.backend=blog-store
-        - traefik.frontend.rule=PathPrefix:/;Host:store.nkonev.name
+        - traefik.backend=blog-storage
+        - traefik.frontend.rule=PathPrefix:/;Host:storage.nkonev.name
         - traefik.port=1234
         - traefik.docker.network=proxy_backend
     ports:
@@ -32,7 +32,7 @@ services:
 #    ports:
 #      - 27017:27017
     volumes:
-      - mongo_prod_blog_store_data_dir:/data/db
+      - mongo_prod_blog_storage_data_dir:/data/db
     logging:
       driver: "json-file"
     #      options:
@@ -49,7 +49,7 @@ services:
       - MINIO_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     volumes:
       # multipart temp store on disk (/tmp is in mem in host centos)
-      - /var/tmp/blog-store:/tmp
+      - /var/tmp/blog-storage:/tmp
       - /mnt/minio/data:/data
     command: ["server", "/data"]
     logging:
@@ -60,7 +60,7 @@ services:
       - backend
 
 volumes:
-  mongo_prod_blog_store_data_dir:
+  mongo_prod_blog_storage_data_dir:
 
 networks:
   backend:

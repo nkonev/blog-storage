@@ -1,4 +1,4 @@
-module github.com/nkonev/blog-store
+module github.com/nkonev/blog-storage
 
 require (
 	github.com/gobuffalo/packr/v2 v2.0.2

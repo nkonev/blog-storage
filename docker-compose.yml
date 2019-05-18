@@ -6,12 +6,12 @@ services:
   mongo:
     image: mongo:4.1.7
     hostname: mongo
-    container_name: mongo-blog-store
+    container_name: mongo-blog-storage
     restart: unless-stopped
     ports:
       - 27017:27017
     volumes:
-      - mongo_blog_store_data_dir:/data/db
+      - mongo_blog_storage_data_dir:/data/db
     logging:
       driver: "json-file"
       options:
@@ -20,7 +20,7 @@ services:
   minio:
     image: minio/minio:RELEASE.2019-01-31T00-31-19Z
     hostname: minio
-    container_name: minio-blog-store
+    container_name: minio-blog-storage
     restart: unless-stopped
     ports:
       - 9000:9000
@@ -37,5 +37,5 @@ services:
         max-file: "1"
 
 volumes:
-  mongo_blog_store_data_dir:
+  mongo_blog_storage_data_dir:
   minio_data:

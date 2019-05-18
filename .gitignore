@@ -6,7 +6,7 @@ build
 vendor
 .vendor-new
 minio-data
-blog-store
+blog-storage
 node_modules
 packrd
 main-packr.go
