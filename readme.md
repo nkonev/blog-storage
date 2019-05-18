@@ -37,7 +37,7 @@ packr2 build
 
 # Deploy to docker swarm
 ```
-mkdir -p /var/tmp/blog-store
+mkdir -p /var/tmp/blog-storage
 mkdir -p /mnt/minio/data
 docker stack deploy --compose-file /path/to/docker-compose.yml BLOGSTORESTACK
 ```
