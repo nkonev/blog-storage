@@ -190,7 +190,7 @@ func getPublishDocument(objName string) bson.D {
 func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
 	database := utils.GetMongoDatabase(h.mongo)
 
-	bucketName := getBucketNameInt(c.Param("userId"))
+	bucketName := getBucketNameInt(c.Param(utils.USER_ID))
 
 	objName := getFileName(c)
 	objName, err := url.PathUnescape(objName)
