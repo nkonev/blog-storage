@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/gommon/log"
 	"github.com/minio/minio-go"
 	"github.com/mongodb/mongo-go-driver/bson"
+	"github.com/mongodb/mongo-go-driver/bson/primitive"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/mongo/options"
 	"github.com/nkonev/blog-storage/utils"
@@ -44,28 +45,57 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 
 	log.Debugf("Listing bucket '%v':", bucket)
 
+	collection := h.getUserCollection(c)
+	cursor, e := collection.Find(context.TODO(), bson.D{})
+	if e != nil {
+		log.Errorf("Error during querying record from mongo")
+		return e
+	}
+	defer cursor.Close(context.TODO())
+
 	var list []FileInfo = make([]FileInfo, 0)
-	for objInfo := range h.minio.ListObjects(bucket, "", false, doneCh) {
+	for cursor.Next(context.TODO()) {
+		// create a value into which the single document can be decoded
+		var elem bson.D
+		err := cursor.Decode(&elem)
+		if err != nil {
+			log.Fatal(err)
+		}
+		filename := elem.Map()[filename].(string)
+		id := elem.Map()[id].(string)
+
+		obj, ee := h.minio.GetObject(bucket, id, minio.GetObjectOptions{})
+		if ee != nil {
+			log.Errorf("Error during GetObject: %v", err)
+			return ee
+		}
+		objInfo, ee := obj.Stat()
+		if ee != nil {
+			log.Errorf("Error during stat: %v", err)
+			return ee
+		}
 		log.Debugf("Object '%v'", objInfo.Key)
 
 		var downloadUrl *url.URL
-		downloadUrl, err := url.Parse(h.serverUrl)
+		downloadUrl, err = url.Parse(h.serverUrl)
 		if err != nil {
 			return err
 		}
 		downloadUrl.Path += utils.DOWNLOAD_PREFIX + objInfo.Key
 
-		published, err := h.isPublished(bucket, objInfo.Key)
+		published, err := h.isPublished(elem)
 		if err != nil {
 			return err
 		}
 		publicUrl := ""
 		if published {
-			publicUrl = h.getPublicUrl(bucket, objInfo.Key)
+			publicUrl = h.getPublicUrl(bucket, elem)
 		}
-		info := FileInfo{Filename: objInfo.Key, Url: downloadUrl.String(), Size: objInfo.Size, PublicUrl: publicUrl}
+
+		info := FileInfo{Filename: filename, Url: downloadUrl.String(), Size: objInfo.Size, PublicUrl: publicUrl}
 		list = append(list, info)
 	}
+
 
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "files": list})
 }
@@ -108,12 +138,33 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 	}
 	defer src.Close()
 
-	if _, err := h.minio.PutObject(bucketName, file.Filename, src, file.Size, minio.PutObjectOptions{ContentType: contentType}); err != nil {
+	// put file
+	inserted, err2 := h.getUserCollection(c).InsertOne(context.TODO(), getFilename(file.Filename), &options.InsertOneOptions{})
+	if err2 != nil {
+		log.Errorf("Error during create mongo document: %v", err2)
+		return err2
+	}
+	idMongo := inserted.InsertedID.(primitive.ObjectID)
+
+	if _, err := h.minio.PutObject(bucketName, idMongo.String(), src, file.Size, minio.PutObjectOptions{ContentType: contentType}); err != nil {
 		log.Errorf("Error during upload object: %v", err)
-		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
+		return err
 	}
 
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok"})
+}
+
+func (h *FsHandler) getUserCollection(c echo.Context) *mongo.Collection {
+	database := utils.GetMongoDatabase(h.mongo)
+	bucketName := getBucketName(c)
+	return database.Collection(bucketName)
+}
+
+const filename = "filename"
+const id = "_id"
+
+func getFilename(file string) bson.D {
+	return bson.D{{filename, file}}
 }
 
 func getBucketName(c echo.Context) string {
@@ -286,8 +337,8 @@ func (h *FsHandler) calcUserFilesConsumption(bucketName string) int64 {
 	return totalBucketConsumption
 }
 
-func (h *FsHandler) getPublicUrl(bucketName, objName string) string {
-	return h.serverUrl + utils.PUBLIC_PREFIX + "/" + bucketName + "/" + objName
+func (h *FsHandler) getPublicUrl(bucketName string, obj bson.D) string {
+	return h.serverUrl + utils.PUBLIC_PREFIX + "/" + bucketName + "/" + obj.Map()[id].(string)
 }
 
 func (h *FsHandler) Publish(c echo.Context) error {
@@ -339,7 +390,7 @@ func (h *FsHandler) isDocumentExists(collection string, request interface{}, opt
 
 }
 
-func (h *FsHandler) isPublished(bucketName, objName string) (bool, error) {
+func (h *FsHandler) isPublished(bson.D) (bool, error) {
 	return h.isDocumentExists(bucketName, getPublishDocument(objName), &options.FindOneOptions{})
 }
 
