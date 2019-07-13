@@ -71,7 +71,7 @@ func InitViper(defaultLocation string) {
 	}
 }
 
-const USER_ID = "iserId"
+const USER_ID = "userId"
 const USER_LOGIN = "userLogin"
 const DOWNLOAD_PREFIX = "/download/"
 const PUBLIC_PREFIX = "/public"
