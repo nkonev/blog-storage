@@ -35,7 +35,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 
 	e := echo.New()
 
-	e.Use(authMiddleware)
+	//e.Use(authMiddleware)
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Secure())

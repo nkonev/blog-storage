@@ -171,6 +171,8 @@ func (h *FsHandler) download(bucketName, objName string) func(c echo.Context) er
 			return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
 		}
 
+		var rw http.ResponseWriter
+
 		return c.Stream(http.StatusOK, info.ContentType, object)
 	}
 }

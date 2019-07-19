@@ -1,3 +1,4 @@
+# https://en.wikipedia.org/wiki/Byte_serving https://github.com/pkg4go/httprange/blob/master/range.go
 
 # [Go modules](https://github.com/golang/go/wiki/Modules#quick-start)
 
