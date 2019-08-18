@@ -2,7 +2,7 @@ server:
   address: ":1234"
   shutdown.timeout: "10s"
   body.limit: "100G"
-  url: http://127.0.0.1:1234
+  url: http://localhost:1234
 
 http:
   idle:
@@ -23,7 +23,7 @@ minio:
   secretAccessKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 
 auth:
-  url: "http://127.0.0.1:8080/api/profile"
+  url: "http://localhost:8070/api/profile"
   exclude:
     - "^/public.*"
 
