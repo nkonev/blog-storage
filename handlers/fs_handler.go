@@ -165,14 +165,29 @@ func (h *FsHandler) download(bucketName, objName string) func(c echo.Context) er
 		c.Response().Header().Set(echo.HeaderContentLength, strconv.FormatInt(info.Size, 10))
 		c.Response().Header().Set(echo.HeaderContentType, info.ContentType)
 
-		object, e := h.minio.GetObject(bucketName, objName, minio.GetObjectOptions{})
-		defer object.Close()
+		duration:= viper.GetDuration("minio.shareLinkTtl")
+		u, e := h.minio.PresignedGetObject(bucketName, objName, duration, url.Values{})
 		if e != nil {
-			return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
+			return e
 		}
-
-		return c.Stream(http.StatusOK, info.ContentType, object)
+		if e := rewriteUrlPrefix(u); e != nil {
+			return e
+		}
+		log.Infof("Returning url: %v", u.String())
+		return c.Redirect(http.StatusTemporaryRedirect, u.String())
 	}
+}
+
+func rewriteUrlPrefix(u *url.URL) error {
+	publicUrlPrefix := viper.GetString("minio.publicUrl")
+	parsedUrlPrefix, e := url.Parse(publicUrlPrefix)
+	if e != nil {
+		return e
+	}
+	u.Scheme = parsedUrlPrefix.Scheme
+	u.Host = parsedUrlPrefix.Host
+	u.Path = parsedUrlPrefix.Path + u.Path
+	return nil
 }
 
 func (h *FsHandler) DownloadHandler(c echo.Context) error {

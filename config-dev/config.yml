@@ -21,6 +21,9 @@ minio:
   endpoint: 127.0.0.1:9000
   accessKeyId: AKIAIOSFODNN7EXAMPLE
   secretAccessKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  shareLinkTtl: '24h'
+  # you should set url handler & set Host header on production proxy
+  publicUrl: http://127.0.0.1:9000
 
 auth:
   url: "http://localhost:8070/api/profile"
