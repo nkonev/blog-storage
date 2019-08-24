@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"github.com/labstack/echo/v4"
@@ -310,31 +309,6 @@ func jsonPathHelper(in, jsonPath string) interface{} {
 	return res
 }
 
-// DownloadFile will download a url to a local file. It's efficient because it will
-// write as it downloads and not load the whole file into memory.
-func DownloadFile(url string) (string, error) {
-
-	// Get the data
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	var b bytes.Buffer
-	foo := bufio.NewWriter(&b)
-	// Write the body to file
-	_, err = io.Copy(foo, resp.Body)
-	if err != nil {
-		return "", err
-	}
-	err = foo.Flush()
-	if err != nil {
-		return "", err
-	}
-	return b.String(), nil
-}
-
 func TestUploadDownloadDelete(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
 	testServer := makeOkAuthServer()
@@ -374,14 +348,12 @@ func TestUploadDownloadDelete(t *testing.T) {
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
-			assert.Equal(t, http.StatusTemporaryRedirect, rec.Code)
+			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.True(t, "927" == rec.Header().Get(echo.HeaderContentLength))
 			assert.Equal(t, "application/octet-stream", rec.Header().Get(echo.HeaderContentType))
-			body, err := DownloadFile(rec.Header().Get("Location"))
-			assert.Nil(t, err)
-			assert.NotEmpty(t, body)
-			log.Infof("Got body: %v", body)
-			assert.True(t, strings.Index(body, "# This file used for both developer and demo purposes") == 0)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
 		}
 
 		{
@@ -468,12 +440,10 @@ func TestUploadMove(t *testing.T) {
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
-			assert.Equal(t, http.StatusTemporaryRedirect, rec.Code)
-			body, err := DownloadFile(rec.Header().Get("Location"))
-			assert.Nil(t, err)
-			assert.NotEmpty(t, body)
-			log.Infof("Got body: %v", body)
-			assert.True(t, strings.Index(body, "# This file used for both developer and demo purposes") == 0)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
 		}
 
 	})
@@ -535,11 +505,10 @@ func TestUploadPublish(t *testing.T) {
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
-			body, err := DownloadFile(rec.Header().Get("Location"))
-			assert.Nil(t, err)
-			assert.NotEmpty(t, body)
-			log.Infof("Got body: %v", body)
-			assert.True(t, strings.Index(body, "# This file used for both developer and demo purposes") == 0)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.NotEmpty(t, rec.Body.String())
+			log.Infof("Got body: %v", rec.Body.String())
+			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
 		}
 
 		{
