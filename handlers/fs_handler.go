@@ -27,6 +27,7 @@ type FsHandler struct {
 }
 
 type FileInfo struct {
+	Id  string `json:"id"`
 	Filename  string `json:"filename"`
 	Url       string `json:"url"`
 	PublicUrl string `json:"publicUrl"`
@@ -159,7 +160,7 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 			return err
 		}
 
-		info := FileInfo{Filename: mongoDto.filename, Url: *downloadUrl, Size: objInfo.Size, PublicUrl: publicUrl}
+		info := FileInfo{Id: mongoDto.id, Filename: mongoDto.filename, Url: *downloadUrl, Size: objInfo.Size, PublicUrl: publicUrl}
 		list = append(list, info)
 	}
 
@@ -451,6 +452,8 @@ func (h *FsHandler) Publish(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// TODO fix update document must contain key beginning with '$
 	updateDocument, err := getIdDoc(objId, primitive.E{published, true})
 	if err != nil {
 		return err
