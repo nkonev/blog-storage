@@ -27,7 +27,7 @@ type FsHandler struct {
 }
 
 type FileInfo struct {
-	Id  string `json:"id"`
+	Id        string `json:"id"`
 	Filename  string `json:"filename"`
 	Url       string `json:"url"`
 	PublicUrl string `json:"publicUrl"`
@@ -35,8 +35,8 @@ type FileInfo struct {
 }
 
 type fileMongoDto struct {
-	id string // mongo document id equal to minio object jd
-	filename string
+	id        string // mongo document id equal to minio object jd
+	filename  string
 	published bool
 }
 
@@ -67,14 +67,18 @@ func toFileMongoDto(c mongo.Cursor) (*fileMongoDto, error) {
 	return convertToFileMongoDto(elem), nil
 }
 
-func getIdDoc(objectId string, p... primitive.E) (bson.D, error) {
+func getIdDoc(objectId string) (bson.D, error) {
 	ids, e := primitive.ObjectIDFromHex(objectId)
 	if e != nil {
 		return nil, e
 	}
 	ds := bson.D{{id, ids}}
-	i := append(ds, p[:]...)
-	return i, nil
+	return ds, nil
+}
+
+func getUpdateDoc(p bson.M) bson.M {
+	update := bson.M{"$set": p}
+	return update
 }
 
 func (h *FsHandler) getMetainfoFromMongo(objectId string, c echo.Context) (*fileMongoDto, error) {
@@ -164,11 +168,10 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 		list = append(list, info)
 	}
 
-
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "files": list})
 }
 
-func (h *FsHandler) insertMetaInfoToMongo(c echo.Context, filename string) (* string, error) {
+func (h *FsHandler) insertMetaInfoToMongo(c echo.Context, filename string) (*string, error) {
 	inserted, err := h.getUserCollection(c).InsertOne(context.TODO(), getMongoMetainfoDocument(filename), &options.InsertOneOptions{})
 	if err != nil {
 		log.Errorf("Error during create mongo document: %v", err)
@@ -244,7 +247,6 @@ func (h *FsHandler) getUserCollection(c echo.Context) *mongo.Collection {
 	return database.Collection(bucketName)
 }
 
-
 func getMongoMetainfoDocument(file string) bson.D {
 	return bson.D{{filename, file}, {published, false}}
 }
@@ -301,7 +303,7 @@ func (h *FsHandler) download(bucketName, objId string) func(c echo.Context) erro
 		if err != nil {
 			return err
 		}
-		c.Response().Header().Set(echo.HeaderContentDisposition, "attachment; filename=\""+ mongoDto.filename + "\"")
+		c.Response().Header().Set(echo.HeaderContentDisposition, "attachment; filename=\""+mongoDto.filename+"\"")
 
 		object, e := h.minio.GetObject(bucketName, objId, minio.GetObjectOptions{})
 		defer object.Close()
@@ -357,10 +359,7 @@ func (h *FsHandler) MoveHandler(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	updateDocument, err := getIdDoc(from, primitive.E{filename, to})
-	if err != nil {
-		return err
-	}
+	updateDocument := getUpdateDoc(primitive.M{filename: to})
 
 	one := userFilesCollection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
 	if one == nil {
@@ -453,11 +452,7 @@ func (h *FsHandler) Publish(c echo.Context) error {
 		return err
 	}
 
-	// TODO fix update document must contain key beginning with '$
-	updateDocument, err := getIdDoc(objId, primitive.E{published, true})
-	if err != nil {
-		return err
-	}
+	updateDocument := getUpdateDoc(primitive.M{published: true})
 
 	one := collection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
 	if one == nil {
@@ -505,6 +500,7 @@ func (h *FsHandler) isDocumentExists(collection string, request interface{}, opt
 	}
 
 }
+
 //
 //func (h *FsHandler) isPublished(bson.D) (bool, error) {
 //	return h.isDocumentExists(bucketName, getPublishDocument(objName), &options.FindOneOptions{})
@@ -522,10 +518,7 @@ func (h *FsHandler) DeletePublish(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	updateDocument, err := getIdDoc(objId, primitive.E{published, true})
-	if err != nil {
-		return err
-	}
+	updateDocument := getUpdateDoc(primitive.M{published: false})
 
 	one := collection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
 	if one == nil {
