@@ -532,7 +532,7 @@ func (h *FsHandler) DeletePublish(c echo.Context) error {
 }
 
 func (h *FsHandler) getMaxAllowedConsumption(userId int) (int64, error) {
-	b, e := h.isDocumentExists("limits", bson.D{{"_id", userId}})
+	b, e := h.isDocumentExists("limits", bson.D{{id, userId}})
 	if e != nil {
 		return 0, e
 	}
