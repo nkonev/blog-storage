@@ -206,8 +206,6 @@
                     component: Vue.component('rename-component', {
                         data: function () {
                             return {
-                                count: 0,
-                                file: file,
                                 dto: dto
                             }
                         },
