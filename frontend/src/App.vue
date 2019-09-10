@@ -199,19 +199,32 @@
                 })
             },
             renameFile(file){
+                let dto = {newname: file.filename};
+
                 this.$modal.show(DIALOG, {
-                    title: 'Rename',
-                    text: `<p>${file.filename}</p>`,
+                    title: 'Rename "' + file.filename + '"',
+                    component: Vue.component('rename-component', {
+                        data: function () {
+                            return {
+                                count: 0,
+                                file: file,
+                                dto: dto
+                            }
+                        },
+                        template: `<div><input         v-bind:value="dto.newname"
+                                                       v-on:input="dto.newname = $event.target.value"
+                                    ></input></div>`
+                    }),
                     buttons: [
                         {
                             title: 'Ok',
                             default: true,
                             handler: () => {
-                                this.$http.post('/rename/'+file.id, {newname: ''+new Date().getTime()}).then(value => {
+                                this.$http.post('/rename/' + file.id, dto).then(value => {
                                     this.$modal.hide(DIALOG);
                                     this.ls();
                                 }, reason => {
-                                    console.error("error during unsharing file");
+                                    console.error("error during renaming file");
                                 })
                             }
                         },
