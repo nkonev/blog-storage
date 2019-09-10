@@ -123,8 +123,8 @@
 
                 this.uploadFiles.splice(index, 1)
             },
-            deleteFile(filename) {
-                this.$http.delete('/delete/'+encodeURIComponent(filename)).then(value => {
+            deleteFile(fileId) {
+                this.$http.delete('/delete/'+fileId).then(value => {
                     this.ls();
                 }, reason => {
                     console.error("error during deleting file");
@@ -150,8 +150,8 @@
                 this.$refs.upload.clear();
                 this.ls();
             },
-            shareFile(file){
-                this.$http.put('/publish/'+encodeURIComponent(file)).then(value => {
+            shareFile(fileId){
+                this.$http.put('/publish/'+fileId).then(value => {
                     const url = value.data.url;
                     console.log("Got public url", url);
                     this.ls();
@@ -173,8 +173,8 @@
                     console.error("error during sharing file");
                 })
             },
-            unshareFile(file){
-                this.$http.delete('/publish/'+encodeURIComponent(file)).then(value => {
+            unshareFile(fileId){
+                this.$http.delete('/publish/'+fileId).then(value => {
                     this.ls();
                 }, reason => {
                     console.error("error during unsharing file");
