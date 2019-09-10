@@ -70,6 +70,7 @@
                             <span class="btn-info" @click.prevent="shareFile(file.id)">[share]</span>
                         </template>
                         <span class="btn-info" @click.prevent="infoFile(file)">[i]</span>
+                        <span class="btn-info" @click.prevent="renameFile(file)">[r]</span>
                         <span class="btn-delete" @click.prevent="deleteFile(file.id)">[x]</span>
                     </li>
                 </ul>
@@ -196,7 +197,32 @@
                         },
                     ],
                 })
-
+            },
+            renameFile(file){
+                this.$modal.show(DIALOG, {
+                    title: 'Rename',
+                    text: `<p>${file.filename}</p>`,
+                    buttons: [
+                        {
+                            title: 'Ok',
+                            default: true,
+                            handler: () => {
+                                this.$http.post('/rename/'+file.id, {newname: ''+new Date().getTime()}).then(value => {
+                                    this.$modal.hide(DIALOG);
+                                    this.ls();
+                                }, reason => {
+                                    console.error("error during unsharing file");
+                                })
+                            }
+                        },
+                        {
+                            title: 'Close',
+                            handler: () => {
+                                this.$modal.hide(DIALOG)
+                            }
+                        },
+                    ],
+                })
             }
         },
         watch: {

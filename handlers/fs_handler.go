@@ -40,6 +40,10 @@ type fileMongoDto struct {
 	published bool
 }
 
+type renameDto struct {
+	Newname string `json:"newname"`
+}
+
 const id = "_id"
 const filename = "filename"
 const published = "published"
@@ -351,15 +355,19 @@ func getFileId(context echo.Context) string {
 }
 
 func (h *FsHandler) MoveHandler(c echo.Context) error {
-	from := c.Param("from")
-	to := c.Param("to")
+	from := getFileId(c)
+	//to := c.Param("to")
+	u := &renameDto{}
+	if err := c.Bind(u); err != nil {
+		return err
+	}
 
 	userFilesCollection := h.getUserCollection(c)
 	findDocument, err := getIdDoc(from)
 	if err != nil {
 		return err
 	}
-	updateDocument := getUpdateDoc(primitive.M{filename: to})
+	updateDocument := getUpdateDoc(primitive.M{filename: u.Newname})
 
 	one := userFilesCollection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
 	if one == nil {
