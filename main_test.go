@@ -18,7 +18,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	test "net/http/httptest"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -319,7 +318,7 @@ func TestUploadDownloadDelete(t *testing.T) {
 	runTest(container, func(e *echo.Echo) {
 		path := "test-file.yml"
 		fileName := "del_" + uuid.NewV4().String() + "test+file?.yml"
-		fileNameEncoded := url.PathEscape(fileName)
+		var fileId = "empty"
 		{
 			dat := getBytea(path)
 
@@ -336,11 +335,12 @@ func TestUploadDownloadDelete(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
+			fileId = getFileIdFromResp(rec, t)
 			log.Infof("Got body: %v", rec.Body.String())
 		}
 
 		{
-			req := test.NewRequest("GET", "/download/"+fileNameEncoded, nil)
+			req := test.NewRequest("GET", "/download/"+fileId, nil)
 			headers := map[string][]string{
 				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
@@ -357,7 +357,7 @@ func TestUploadDownloadDelete(t *testing.T) {
 		}
 
 		{
-			req := test.NewRequest("DELETE", "/delete/"+fileNameEncoded, nil)
+			req := test.NewRequest("DELETE", "/delete/"+fileId, nil)
 			headers := map[string][]string{
 				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
@@ -371,7 +371,7 @@ func TestUploadDownloadDelete(t *testing.T) {
 		}
 
 		{
-			req := test.NewRequest("GET", "/download/"+fileNameEncoded, nil)
+			req := test.NewRequest("GET", "/download/"+fileId, nil)
 			headers := map[string][]string{
 				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
@@ -387,7 +387,16 @@ func TestUploadDownloadDelete(t *testing.T) {
 	})
 }
 
-func TestUploadMove(t *testing.T) {
+func getFileIdFromResp(rec *test.ResponseRecorder, t *testing.T) string {
+	var fileId string
+	var resp = &utils.H{}
+	err := json.Unmarshal([]byte(rec.Body.Bytes()), &resp)
+	assert.Nil(t, err)
+	fileId = (*resp)["id"].(string)
+	return fileId
+}
+
+func TestUploadRename(t *testing.T) {
 	container := setUpContainerForIntegrationTests()
 	testServer := makeOkAuthServer()
 	defer func() { testServer.Close() }()
@@ -398,6 +407,7 @@ func TestUploadMove(t *testing.T) {
 		path := "test-file.yml"
 		oldFileName := "pre_mv_" + uuid.NewV4().String() + ".yml"
 		fileNameNew := "mv_" + uuid.NewV4().String() + ".yml"
+		var fileId string
 		{
 			dat := getBytea(path)
 
@@ -415,12 +425,14 @@ func TestUploadMove(t *testing.T) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
 			log.Infof("Got body: %v", rec.Body.String())
+			fileId = getFileIdFromResp(rec, t)
 		}
 
 		{
-			req := test.NewRequest("POST", "/move/"+oldFileName+"/"+fileNameNew, nil)
+			req := test.NewRequest("POST", "/rename/"+fileId, strings.NewReader(`{"newname": "`+fileNameNew+`"}`))
 			headers := map[string][]string{
-				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
+				echo.HeaderContentType: {"application/json"},
+				echo.HeaderCookie:      []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
 			req.Header = headers
 			rec := test.NewRecorder()
@@ -432,7 +444,7 @@ func TestUploadMove(t *testing.T) {
 		}
 
 		{
-			req := test.NewRequest("GET", "/download/"+fileNameNew, nil)
+			req := test.NewRequest("GET", "/download/"+fileId, nil)
 			headers := map[string][]string{
 				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
@@ -459,6 +471,7 @@ func TestUploadPublish(t *testing.T) {
 	runTest(container, func(e *echo.Echo) {
 		path := "test-file.yml"
 		fileName := "publish_" + uuid.NewV4().String() + ".yml"
+		var fileId string
 		{
 			dat := getBytea(path)
 
@@ -476,10 +489,11 @@ func TestUploadPublish(t *testing.T) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
 			log.Infof("Got body: %v", rec.Body.String())
+			fileId = getFileIdFromResp(rec, t)
 		}
 
 		{
-			req := test.NewRequest("GET", "/public/user1/"+fileName, nil)
+			req := test.NewRequest("GET", "/public/user1/"+fileId, nil)
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
@@ -487,7 +501,7 @@ func TestUploadPublish(t *testing.T) {
 		}
 
 		{
-			req := test.NewRequest("PUT", "/publish/"+fileName, nil)
+			req := test.NewRequest("PUT", "/publish/"+fileId, nil)
 			headers := map[string][]string{
 				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
@@ -501,7 +515,7 @@ func TestUploadPublish(t *testing.T) {
 		}
 
 		{
-			req := test.NewRequest("GET", "/public/user1/"+fileName, nil)
+			req := test.NewRequest("GET", "/public/user1/"+fileId, nil)
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 

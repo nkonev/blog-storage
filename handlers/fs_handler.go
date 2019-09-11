@@ -242,7 +242,7 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, &utils.H{"status": "ok"})
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "id": mongoId})
 }
 
 func (h *FsHandler) getUserCollection(c echo.Context) *mongo.Collection {
