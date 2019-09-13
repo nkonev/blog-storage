@@ -2,7 +2,7 @@ module github.com/nkonev/blog-storage
 
 require (
 	github.com/gobuffalo/packr/v2 v2.0.2
-	github.com/golang-migrate/migrate/v4 v4.2.5
+	github.com/golang-migrate/migrate/v4 v4.6.2
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/labstack/echo/v4 v4.1.5
 	github.com/labstack/gommon v0.2.8
