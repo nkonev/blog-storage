@@ -48,6 +48,7 @@ const id = "_id"
 const filename = "filename"
 const published = "published"
 const FormFile = "file"
+const userId = "userId"
 
 func NewFsHandler(minio *minio.Client, serverUrl string, client *mongo.Client) *FsHandler {
 	return &FsHandler{minio: minio, serverUrl: serverUrl, mongo: client}
@@ -85,8 +86,8 @@ func getUpdateDoc(p bson.M) bson.M {
 	return update
 }
 
-func (h *FsHandler) getMetainfoFromMongo(objectId string, c echo.Context) (*fileMongoDto, error) {
-	userFilesCollection := h.getUserCollection(c)
+func (h *FsHandler) getMetainfoFromMongo(objectId string, userId int) (*fileMongoDto, error) {
+	userFilesCollection := h.getUserCollectionInt(userId)
 	ds, err := getIdDoc(objectId)
 	if err != nil {
 		log.Errorf("Error during creating id document %v", objectId)
@@ -110,6 +111,44 @@ func (h *FsHandler) getMetainfoFromMongo(objectId string, c echo.Context) (*file
 		return nil, err
 	}
 	return convertToFileMongoDto(elem), nil
+}
+
+const global_objects = "global_objects"
+
+func (h *FsHandler) getNextGlobalId(userIdV int) (*string, error) {
+	database := utils.GetMongoDatabase(h.mongo)
+	ms := bson.M{userId: userIdV}
+	result, e := database.Collection(global_objects).InsertOne(context.TODO(), ms)
+	if e != nil {
+		return nil, e
+	}
+	idMongo := result.InsertedID.(primitive.ObjectID).Hex()
+	return &idMongo, nil
+}
+
+func (h *FsHandler) getUserIdByGlobalId(objectId string) (int, error) {
+	ids, e := primitive.ObjectIDFromHex(objectId)
+	if e != nil {
+		return 0, e
+	}
+	database := utils.GetMongoDatabase(h.mongo)
+
+	ms := bson.M{id: ids}
+	one := database.Collection(global_objects).FindOne(context.TODO(), ms)
+	if one.Err() != nil {
+		if one.Err() != mongo.ErrNoDocuments {
+			log.Errorf("Error during get user id by global id %v", objectId)
+		} else {
+			log.Infof("No documents found by global id %v", objectId)
+		}
+		return 0, one.Err()
+	}
+	var elem bson.D
+	if err := one.Decode(&elem); err != nil {
+		return 0, err
+	}
+	userId64 := elem.Map()[userId].(int64)
+	return int(userId64), nil
 }
 
 func (h *FsHandler) getPrivateUrlFromObject(objInfo minio.ObjectInfo) (*string, error) {
@@ -175,10 +214,21 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "files": list})
 }
 
-func (h *FsHandler) insertMetaInfoToMongo(c echo.Context, filename string) (*string, error) {
-	inserted, err := h.getUserCollection(c).InsertOne(context.TODO(), getMongoMetainfoDocument(filename), &options.InsertOneOptions{})
+func (h *FsHandler) insertMetaInfoToMongo(c echo.Context, filename string, userId int) (*string, error) {
+
+	globalId, err := h.getNextGlobalId(userId)
 	if err != nil {
-		log.Errorf("Error during create mongo document: %v", err)
+		log.Errorf("Error during create mongo global id document: %v", err)
+		return nil, err
+	}
+	metainfoDocument, err := getMongoMetainfoDocument(globalId, filename)
+	if err != nil {
+		log.Errorf("Error during construct mongo global id document: %v", err)
+		return nil, err
+	}
+	inserted, err := h.getUserCollection(c).InsertOne(context.TODO(), metainfoDocument)
+	if err != nil {
+		log.Errorf("Error during create mongo metadata document: %v", err)
 		return nil, err
 	}
 	idMongo := inserted.InsertedID.(primitive.ObjectID).Hex()
@@ -232,7 +282,11 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 	defer src.Close()
 
 	// put file
-	mongoId, err := h.insertMetaInfoToMongo(c, file.Filename)
+	i, err := getUserIdFromRequest(c)
+	if err != nil {
+		return err
+	}
+	mongoId, err := h.insertMetaInfoToMongo(c, file.Filename, i)
 	if err != nil {
 		return err
 	}
@@ -251,16 +305,32 @@ func (h *FsHandler) getUserCollection(c echo.Context) *mongo.Collection {
 	return database.Collection(bucketName)
 }
 
-func getMongoMetainfoDocument(file string) bson.D {
-	return bson.D{{filename, file}, {published, false}}
+func (h *FsHandler) getUserCollectionInt(userId int) *mongo.Collection {
+	database := utils.GetMongoDatabase(h.mongo)
+	bucketName := getBucketNameInt(userId)
+	return database.Collection(bucketName)
+}
+
+func getMongoMetainfoDocument(globalId *string, file string) (bson.D, error) {
+	ids, e := primitive.ObjectIDFromHex(*globalId)
+	if e != nil {
+		return nil, e
+	}
+	return bson.D{{id, ids}, {filename, file}, {published, false}}, nil
 }
 
 func getBucketName(c echo.Context) string {
+	i, _ := getUserIdFromRequest(c)
+	return getBucketNameInt(i)
+}
+
+func getUserIdFromRequest(c echo.Context) (int, error) {
 	i, ok := c.Get(utils.USER_ID).(int)
 	if !ok {
 		log.Errorf("Error during get(cast) userId")
+		return 0, errors.New("Error during get(cast) userId")
 	}
-	return getBucketNameInt(i)
+	return i, nil
 }
 
 func getBucketNameInt(userId interface{}) string {
@@ -294,7 +364,7 @@ func (h *FsHandler) ensureBucket(bucketName, location string) {
 
 }
 
-func (h *FsHandler) download(bucketName, objId string) func(c echo.Context) error {
+func (h *FsHandler) download(bucketName, objId string, userId int) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		info, e := h.minio.StatObject(bucketName, objId, minio.StatObjectOptions{})
 		if e != nil {
@@ -303,7 +373,7 @@ func (h *FsHandler) download(bucketName, objId string) func(c echo.Context) erro
 
 		c.Response().Header().Set(echo.HeaderContentLength, strconv.FormatInt(info.Size, 10))
 		c.Response().Header().Set(echo.HeaderContentType, info.ContentType)
-		mongoDto, err := h.getMetainfoFromMongo(objId, c)
+		mongoDto, err := h.getMetainfoFromMongo(objId, userId)
 		if err != nil {
 			return err
 		}
@@ -323,8 +393,12 @@ func (h *FsHandler) DownloadHandler(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
 
 	objName := getFileId(c)
+	i, e := getUserIdFromRequest(c)
+	if e != nil {
+		return e
+	}
 
-	return h.download(bucketName, objName)(c)
+	return h.download(bucketName, objName, i)(c)
 }
 
 //func getPublishDocument(objName string) bson.D {
@@ -333,11 +407,11 @@ func (h *FsHandler) DownloadHandler(c echo.Context) error {
 
 func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
 
-	bucketName := getBucketNameInt(c.Param(utils.USER_ID))
-
 	objId := getFileId(c)
 
-	dto, err := h.getMetainfoFromMongo(objId, c)
+	userId, err := h.getUserIdByGlobalId(objId)
+
+	dto, err := h.getMetainfoFromMongo(objId, userId)
 
 	if err != nil {
 		return err
@@ -347,7 +421,9 @@ func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, &utils.H{"status": "access fail"})
 	}
 
-	return h.download(bucketName, objId)(c)
+	bucketName := getBucketNameInt(userId)
+
+	return h.download(bucketName, objId, userId)(c)
 }
 
 func getFileId(context echo.Context) string {

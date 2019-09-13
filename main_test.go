@@ -526,7 +526,7 @@ func TestUploadPublish(t *testing.T) {
 		}
 
 		{
-			req := test.NewRequest("DELETE", "/publish/"+fileName, nil)
+			req := test.NewRequest("DELETE", "/publish/"+fileId, nil)
 			headers := map[string][]string{
 				echo.HeaderCookie: []string{SESSION_COOKIE + "=" + "sessionCookie"},
 			}
@@ -540,7 +540,7 @@ func TestUploadPublish(t *testing.T) {
 		}
 
 		{
-			req := test.NewRequest("GET", "/public/user1/"+fileName, nil)
+			req := test.NewRequest("GET", "/public/user1/"+fileId, nil)
 			rec := test.NewRecorder()
 			e.ServeHTTP(rec, req)
 
