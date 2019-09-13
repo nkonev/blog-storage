@@ -22,7 +22,7 @@ install:
   - "docker-compose up -d"
   - "wait-for-it.sh -t 30 127.0.0.1:27017 -- echo 'mongo is up'"
   - "wait-for-it.sh -t 30 127.0.0.1:9000 -- echo 'minio is up'"
-  - go get github.com/gobuffalo/packr/v2/packr2@v2.6.0
+  - go get github.com/gobuffalo/packr/v2/packr2@v2.0.2
   - (cd frontend; npm install;)
 script:
   - "pwd"
