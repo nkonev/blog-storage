@@ -37,7 +37,7 @@ packr2 build
 
 # Testing
 ```
-go test -count=1 ./...
+go clean -testcache; go test ./...
 ```
 
 # Cleaning

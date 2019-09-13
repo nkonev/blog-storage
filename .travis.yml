@@ -1,6 +1,6 @@
 language: go
 go:
-  - "1.12.2"
+  - "1.12.9"
 node_js:
   - "10.13.0"
 # https://arslan.io/2018/08/26/using-go-modules-with-vendor-support-on-travis-ci/
@@ -22,7 +22,7 @@ install:
   - "docker-compose up -d"
   - "wait-for-it.sh -t 30 127.0.0.1:27017 -- echo 'mongo is up'"
   - "wait-for-it.sh -t 30 127.0.0.1:9000 -- echo 'minio is up'"
-  - go get github.com/gobuffalo/packr/v2/packr2@v2.0.1
+  - go get github.com/gobuffalo/packr/v2/packr2@v2.6.0
   - (cd frontend; npm install;)
 script:
   - "pwd"

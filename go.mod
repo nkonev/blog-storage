@@ -1,9 +1,8 @@
 module github.com/nkonev/blog-storage
 
 require (
-	github.com/gobuffalo/packr/v2 v2.0.2
+	github.com/gobuffalo/packr/v2 v2.0.1
 	github.com/golang-migrate/migrate/v4 v4.6.2
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/labstack/echo/v4 v4.1.5
 	github.com/labstack/gommon v0.2.8
 	github.com/minio/minio-go v0.0.0-20190430232750-10b3660b8f09
@@ -13,5 +12,5 @@ require (
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.3.0
 	go.uber.org/dig v1.7.0
-	golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
+	golang.org/x/crypto v0.0.0-20190621222207-cc06ce4a13d4
 )
