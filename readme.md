@@ -37,7 +37,12 @@ packr2 build
 
 # Testing
 ```
-GOCACHE=off go test ./...
+go test -count=1 ./...
+```
+
+# Cleaning
+```
+go clean -testcache
 ```
 
 # Deploy to docker swarm
