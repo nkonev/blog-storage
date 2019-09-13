@@ -35,6 +35,11 @@ go get github.com/gobuffalo/packr/v2/packr2@v2.0.1
 packr2 build
 ```
 
+# Testing
+```
+GOCACHE=off go test ./...
+```
+
 # Deploy to docker swarm
 ```
 mkdir -p /var/tmp/blog-storage
