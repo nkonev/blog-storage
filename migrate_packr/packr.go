@@ -3,7 +3,7 @@ package migrate_packr
 import (
 	"bytes"
 	"fmt"
-	"github.com/gobuffalo/packr/v2"
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/golang-migrate/migrate/v4/source"
 	"io"
 	"io/ioutil"
@@ -18,7 +18,7 @@ func init() {
 
 type Packr struct {
 	migrations *source.Migrations
-	box        *packr.Box
+	box        *rice.Box
 	path       string
 }
 
@@ -27,20 +27,48 @@ func (b *Packr) Open(url string) (source.Driver, error) {
 }
 
 func WithInstance(instance interface{}) (source.Driver, error) {
-	if _, ok := instance.(*packr.Box); !ok {
+	if _, ok := instance.(*rice.Box); !ok {
 		return nil, fmt.Errorf("expects *packr.Box")
 	}
-	bx := instance.(*packr.Box)
+	bx := instance.(*rice.Box)
+
 
 	driver := &Packr{
 		box:        bx,
 		migrations: source.NewMigrations(),
-		path:       bx.Path,
+		path:       bx.Name(),
 	}
 
-	bx.List()
+	//bx.List()
+	if err := bx.Walk("", func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+		/*file, err := bx.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		var arr []byte  = make([]byte, info.Size())
+		_, err = file.Read(arr)
+		if err != nil {
+			return err
+		}*/
 
-	for _, fi := range bx.List() {
+		//s := string(arr)
+		m, err := source.DefaultParse(path)
+		if err != nil {
+			return err
+		}
+
+		if !driver.migrations.Append(m) {
+			return fmt.Errorf("unable to parse file %v", path)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	/*for _, fi := range bx.List() {
 		m, err := source.DefaultParse(fi)
 		if err != nil {
 			continue // ignore files that we can't parse
@@ -49,7 +77,7 @@ func WithInstance(instance interface{}) (source.Driver, error) {
 		if !driver.migrations.Append(m) {
 			return nil, fmt.Errorf("unable to parse file %v", fi)
 		}
-	}
+	}*/
 
 	return driver, nil
 }
@@ -84,10 +112,7 @@ func (b *Packr) Next(version uint) (nextVersion uint, err error) {
 
 func (b *Packr) ReadUp(version uint) (r io.ReadCloser, identifier string, err error) {
 	if m, ok := b.migrations.Up(version); ok {
-		body, err := b.box.Find(m.Raw)
-		if err != nil {
-			return nil, "", err
-		}
+		body := b.box.MustBytes(m.Raw)
 		return ioutil.NopCloser(bytes.NewReader(body)), m.Identifier, nil
 	}
 	return nil, "", &os.PathError{fmt.Sprintf("read version %v", version), b.path, os.ErrNotExist}
@@ -95,10 +120,7 @@ func (b *Packr) ReadUp(version uint) (r io.ReadCloser, identifier string, err er
 
 func (b *Packr) ReadDown(version uint) (r io.ReadCloser, identifier string, err error) {
 	if m, ok := b.migrations.Down(version); ok {
-		body, err := b.box.Find(m.Raw)
-		if err != nil {
-			return nil, "", err
-		}
+		body := b.box.MustBytes(m.Raw)
 		return ioutil.NopCloser(bytes.NewReader(body)), m.Identifier, nil
 	}
 	return nil, "", &os.PathError{fmt.Sprintf("read version %v", version), b.path, os.ErrNotExist}

@@ -1,7 +1,7 @@
 package migrate_packr
 
 import (
-	"github.com/gobuffalo/packr/v2"
+	rice "github.com/GeertJohan/go.rice"
 	"log"
 	"testing"
 
@@ -9,7 +9,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	box := packr.New("testdata", "./testdata")
+	box := rice.MustFindBox("testdata")
 
 	d, err := WithInstance(box)
 	if err != nil {

@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/gobuffalo/packr/v2"
+	"github.com/GeertJohan/go.rice"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/nkonev/blog-storage/client"
 	"github.com/nkonev/blog-storage/handlers"
+	"github.com/nkonev/blog-storage/migrate_packr"
 	"github.com/nkonev/blog-storage/mongo_lock"
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
@@ -23,7 +24,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
 	"github.com/minio/minio-go"
-	"github.com/nkonev/blog-storage/migrate_packr"
+	//"github.com/nkonev/blog-storage/migrate_packr"
 )
 
 func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) *echo.Echo {
@@ -31,7 +32,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 
 	log.SetOutput(os.Stdout)
 
-	static := packr.New("static", "./static")
+	static := rice.MustFindBox("static").HTTPBox()
 
 	e := echo.New()
 
@@ -56,7 +57,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 	return e
 }
 
-func getStaticMiddleware(box *packr.Box) echo.MiddlewareFunc {
+func getStaticMiddleware(box *rice.HTTPBox) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			reqUrl := c.Request().RequestURI
@@ -172,7 +173,7 @@ func configureHandler(minio *minio.Client, mongo *mongo.Client) *handlers.FsHand
 }
 
 func configureMigrate() *migrate.Migrate {
-	box := packr.New("migrations", "./migrations")
+	box := rice.MustFindBox("migrations")
 
 	driver, err := migrate_packr.WithInstance(box)
 	if err != nil {
