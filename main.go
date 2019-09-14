@@ -160,7 +160,8 @@ func main() {
 	container.Provide(configureMigrate)
 	container.Provide(configureAuthMiddleware)
 	container.Provide(client.NewRestClient)
-	container.Invoke(runMigrate)
+	//container.Invoke(runMigrate)
+	container.Invoke(runMigrate2)
 
 	if echoErr := container.Invoke(runEcho); echoErr != nil {
 		log.Fatalf("Error during invoke echo: %v", echoErr)
@@ -209,6 +210,12 @@ func runMigrate(m *migrate.Migrate) {
 	log.Info("Migration run successfully")
 
 	lock.ReleaseLock()
+}
+
+func runMigrate2(m *handlers.FsHandler) {
+	log.Infof("start migrate 2")
+	m.RunMigrate2()
+	log.Infof("finish migrate 2")
 }
 
 func configureMinio() *minio.Client {

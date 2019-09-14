@@ -635,3 +635,62 @@ func (h *FsHandler) getMaxAllowedConsumption(userId int) (int64, error) {
 		return viper.GetInt64("limits.default.per.user.max"), nil
 	}
 }
+
+
+
+
+
+
+// todo rm
+type FileInfo0 struct {
+	Filename  string
+	Size int64
+	ContentType string
+}
+func (h *FsHandler)RunMigrate2() {
+	var userId = 1011
+	var list []FileInfo0 = make([]FileInfo0, 0)
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+	for objInfo := range h.minio.ListObjects(getBucketNameInt(userId), "", false, doneCh) {
+		log.Debugf("Object '%v'", objInfo.Key)
+
+
+
+		info := FileInfo0{Filename: objInfo.Key, Size:objInfo.Size, ContentType:objInfo.ContentType}
+		list = append(list, info)
+	}
+
+	for _, objInfo := range list {
+		globalId, e := h.getNextGlobalId(userId)
+		if e != nil {
+			log.Errorf("Erreor during migration 2 %v", e)
+			return
+		}
+
+		log.Infof("Migrationg '%v'", objInfo.Filename)
+		metainfoDocument, err := getMongoMetainfoDocument(globalId, objInfo.Filename)
+		if err != nil {
+			log.Errorf("Error during migration 2 construct mongo global id document: %v", err)
+			return
+		}
+		_, err = h.getUserCollectionInt(userId).InsertOne(context.TODO(), metainfoDocument)
+		if err != nil {
+			log.Errorf("Error during migration 2 create mongo metadata document: %v", err)
+			return
+		}
+
+		// expensive rename in minio
+		object, err := h.minio.GetObject(getBucketNameInt(userId), objInfo.Filename, minio.GetObjectOptions{})
+		defer object.Close()
+		if err != nil {
+			log.Errorf("Error during get object: %v", err)
+		}
+		if _, err := h.minio.PutObject(getBucketNameInt(userId), *globalId, object, objInfo.Size, minio.PutObjectOptions{ContentType: objInfo.ContentType}); err != nil {
+			log.Errorf("Error during copy object: %v", err)
+		}
+		h.minio.RemoveObject(getBucketNameInt(userId), objInfo.Filename)
+	}
+
+	log.Info("Migration2 run successfully")
+}
