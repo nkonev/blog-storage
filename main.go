@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/GeertJohan/go.rice"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+	"github.com/minio/minio-go"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/nkonev/blog-storage/client"
 	"github.com/nkonev/blog-storage/handlers"
@@ -20,11 +23,6 @@ import (
 	"os/signal"
 	"regexp"
 	"strings"
-
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
-	"github.com/minio/minio-go"
-	//"github.com/nkonev/blog-storage/migrate_packr"
 )
 
 func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) *echo.Echo {

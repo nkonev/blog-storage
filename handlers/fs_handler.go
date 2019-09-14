@@ -401,10 +401,6 @@ func (h *FsHandler) DownloadHandler(c echo.Context) error {
 	return h.download(bucketName, objName, i)(c)
 }
 
-//func getPublishDocument(objName string) bson.D {
-//	return bson.D{{"_id", objName}}
-//}
-
 func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
 
 	objId := getFileId(c)
@@ -432,7 +428,6 @@ func getFileId(context echo.Context) string {
 
 func (h *FsHandler) MoveHandler(c echo.Context) error {
 	from := getFileId(c)
-	//to := c.Param("to")
 	u := &renameDto{}
 	if err := c.Bind(u); err != nil {
 		return err
@@ -459,10 +454,7 @@ func (h *FsHandler) MoveHandler(c echo.Context) error {
 func (h *FsHandler) DeleteHandler(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
 	objId := getFileId(c)
-	//objName, err := url.PathUnescape(objName)
-	//if err != nil {
-	//	return err
-	//}
+
 	if err := h.minio.RemoveObject(bucketName, objId); err != nil {
 		log.Errorf("Error during remove object from minio: %v", err)
 		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
@@ -521,10 +513,7 @@ func (h *FsHandler) Publish(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
 
 	objId := getFileId(c)
-	//objName, err := url.PathUnescape(objName)
-	//if err != nil {
-	//	return err
-	//}
+
 	_, e := h.minio.StatObject(bucketName, objId, minio.StatObjectOptions{})
 	if e != nil {
 		return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
@@ -551,12 +540,6 @@ func (h *FsHandler) Publish(c echo.Context) error {
 	}
 	dto := convertToFileMongoDto(elem)
 
-	//upsert := true
-	//_, err2 := database.Collection(bucketName).UpdateOne(context.TODO(), getPublishDocument(objName), bson.D{}, &options.UpdateOptions{Upsert: &upsert})
-	//if err2 != nil {
-	//	log.Errorf("Error during publishing '%v' : %v", objName, err)
-	//	return err2
-	//}
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "published": true, "url": h.getPublicUrl(getBucketName(c), dto.id)})
 }
 
@@ -585,17 +568,8 @@ func (h *FsHandler) isDocumentExists(collection string, request interface{}, opt
 
 }
 
-//
-//func (h *FsHandler) isPublished(bson.D) (bool, error) {
-//	return h.isDocumentExists(bucketName, getPublishDocument(objName), &options.FindOneOptions{})
-//}
-
 func (h *FsHandler) DeletePublish(c echo.Context) error {
 	objId := getFileId(c)
-	//objName, err := url.PathUnescape(objName)
-	//if err != nil {
-	//	return err
-	//}
 
 	collection := h.getUserCollection(c)
 	findDocument, err := getIdDoc(objId)
