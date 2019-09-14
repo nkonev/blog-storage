@@ -8,5 +8,4 @@ vendor
 minio-data
 blog-storage
 node_modules
-packrd
-main-packr.go
+rice-box.go
