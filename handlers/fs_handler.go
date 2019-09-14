@@ -648,7 +648,7 @@ type FileInfo0 struct {
 	ContentType string
 }
 func (h *FsHandler)RunMigrate2() {
-	var userId = 1011
+	var userId = 5
 	var list []FileInfo0 = make([]FileInfo0, 0)
 	doneCh := make(chan struct{})
 	defer close(doneCh)
