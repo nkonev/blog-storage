@@ -23,6 +23,31 @@ import (
 	"strings"
 )
 
+const SESSION_COOKIE = "SESSION"
+const AUTH_URL = "auth.url"
+const LOCK_COLLECTION = "migration_lock"
+
+func main() {
+	utils.InitViper("./config-dev/config.yml")
+
+	app := fx.New(
+		fx.Logger(Logger),
+		fx.Provide(
+			configureMongo,
+			configureMinio,
+			configureHandler,
+			configureEcho,
+			configureMigrate,
+			configureAuthMiddleware,
+			client.NewRestClient,
+		),
+		fx.Invoke(runMigrate, runEcho),
+	)
+	app.Run()
+
+	Logger.Infof("Exit program")
+}
+
 func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc, lc fx.Lifecycle) *echo.Echo {
 	bodyLimit := viper.GetString("server.body.limit")
 
@@ -83,9 +108,6 @@ func checkUrlInWhitelist(whitelist []regexp.Regexp, uri string) bool {
 	}
 	return false
 }
-
-const SESSION_COOKIE = "SESSION"
-const AUTH_URL = "auth.url"
 
 func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -152,28 +174,6 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 	}
 }
 
-func main() {
-
-	utils.InitViper("./config-dev/config.yml")
-
-	app := fx.New(
-		fx.Logger(Logger),
-		fx.Provide(
-			configureMongo,
-			configureMinio,
-			configureHandler,
-			configureEcho,
-			configureMigrate,
-			configureAuthMiddleware,
-			client.NewRestClient,
-		),
-		fx.Invoke(runMigrate, runEcho),
-	)
-	app.Run()
-
-	Logger.Infof("Exit program")
-}
-
 func configureHandler(minio *minio.Client, mongo *mongo.Client) *handlers.FsHandler {
 	return handlers.NewFsHandler(minio, viper.GetString("server.url"), mongo)
 }
@@ -193,8 +193,6 @@ func configureMigrate() *migrate.Migrate {
 	}
 	return m
 }
-
-const LOCK_COLLECTION = "migration_lock"
 
 func runMigrate(m *migrate.Migrate) {
 	mongoClient := utils.GetMongoClient()
