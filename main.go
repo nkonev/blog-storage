@@ -17,15 +17,14 @@ import (
 	"github.com/nkonev/blog-storage/mongo_lock"
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
-	"go.uber.org/dig"
+	"go.uber.org/fx"
 	"net/http"
 	"os"
-	"os/signal"
 	"regexp"
 	"strings"
 )
 
-func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) *echo.Echo {
+func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc, lc fx.Lifecycle) *echo.Echo {
 	bodyLimit := viper.GetString("server.body.limit")
 
 	log.SetOutput(os.Stdout)
@@ -51,6 +50,14 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc) 
 	e.DELETE("/publish/:file", fsh.DeletePublish)
 
 	e.Pre(getStaticMiddleware(static))
+
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			// do some work on application stop (like closing connections and files)
+			log.Infof("Stopping server")
+			return e.Shutdown(ctx)
+		},
+	})
 
 	return e
 }
@@ -150,19 +157,21 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 
 func main() {
 	utils.InitViper("./config-dev/config.yml")
-	container := dig.New()
-	container.Provide(configureMongo)
-	container.Provide(configureMinio)
-	container.Provide(configureHandler)
-	container.Provide(configureEcho)
-	container.Provide(configureMigrate)
-	container.Provide(configureAuthMiddleware)
-	container.Provide(client.NewRestClient)
-	container.Invoke(runMigrate)
 
-	if echoErr := container.Invoke(runEcho); echoErr != nil {
-		log.Fatalf("Error during invoke echo: %v", echoErr)
-	}
+	app := fx.New(
+		fx.Provide(
+			configureMongo,
+			configureMinio,
+			configureHandler,
+			configureEcho,
+			configureMigrate,
+			configureAuthMiddleware,
+			client.NewRestClient,
+		),
+		fx.Invoke(runMigrate, runEcho),
+	)
+	app.Run()
+
 	log.Infof("Exit program")
 }
 
@@ -224,35 +233,29 @@ func configureMinio() *minio.Client {
 	return minioClient
 }
 
-func configureMongo() *mongo.Client {
-	return utils.GetMongoClient()
+func configureMongo(lc fx.Lifecycle) *mongo.Client {
+	mongoClient := utils.GetMongoClient()
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			// do some work on application stop (like closing connections and files)
+			log.Infof("Stopping mongo client")
+			return mongoClient.Disconnect(ctx)
+		},
+	})
+
+	return mongoClient
 }
 
 // rely on viper import and it's configured by
 func runEcho(e *echo.Echo) {
 	address := viper.GetString("server.address")
-	shutdownTimeout := viper.GetDuration("server.shutdown.timeout")
 
 	log.Info("Starting server...")
 	// Start server in another goroutine
 	go func() {
 		if err := e.Start(address); err != nil {
-			log.Infof("shutting down the server due error %v", err)
+			log.Infof("server shut down: %v", err)
 		}
 	}()
-
 	log.Info("Server started. Waiting for interrupt (2) (Ctrl+C)")
-	// Wait for interrupt signal to gracefully shutdown the server with
-	// a timeout of 10 seconds.
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
-	log.Infof("Got signal %v - will forcibly close after %v", os.Interrupt, shutdownTimeout)
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel() // releases resources if slowOperation completes before timeout elapses
-	if err := e.Shutdown(ctx); err != nil {
-		log.Fatal(err)
-	} else {
-		log.Infof("Server successfully shut down")
-	}
 }

@@ -2,26 +2,52 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"github.com/nkonev/blog-storage/handlers"
+	"github.com/oliveagle/jsonpath"
+	uuid "github.com/satori/go.uuid"
+	"mime/multipart"
+	"strings"
+	"time"
+
+	//"encoding/json"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 	"github.com/nkonev/blog-storage/client"
-	"github.com/nkonev/blog-storage/handlers"
+	//"github.com/nkonev/blog-storage/handlers"
 	"github.com/nkonev/blog-storage/utils"
-	"github.com/oliveagle/jsonpath"
-	"github.com/satori/go.uuid"
+	//"github.com/oliveagle/jsonpath"
+	//"github.com/satori/go.uuid"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/dig"
+	"go.uber.org/fx"
 	"io"
 	"io/ioutil"
-	"mime/multipart"
+	//"mime/multipart"
 	"net/http"
 	test "net/http/httptest"
 	"os"
-	"strings"
+	//"strings"
 	"testing"
 )
+
+func makeOkAuthServer() *test.Server {
+	testServer := test.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(200)
+		res.Write([]byte(`{"id": 1, "login": "nikita k"}`))
+	}))
+	return testServer
+}
+
+func makeFailAuthServer() *test.Server {
+	testServer := test.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(401)
+		res.Write([]byte(`{"status":401,"error":"Unauthorized","message":"Доступ запрещен","timeStamp":"Mon Feb 11 00:14:12 MSK 2019","validationErrors":[]}`))
+
+	}))
+	return testServer
+}
 
 func TestMain(m *testing.M) {
 	setup()
@@ -79,28 +105,44 @@ func request(method, path string, body io.Reader, e *echo.Echo, sessionCookie st
 	return rec.Code, rec.Body.String(), rec.HeaderMap
 }
 
-func runTest(container *dig.Container, test func(e *echo.Echo)) {
+func runTest(container fx.Option, test func(e *echo.Echo)) {
 
-	if err := container.Invoke(func(e *echo.Echo) {
-		defer e.Close()
-
-		test(e)
-	}); err != nil {
+	app := fx.New(
+		container,
+		fx.Invoke(runMigrate, runEcho2(test)),
+	)
+	log.Infof("Running")
+	stopCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := app.Start(stopCtx); err != nil {
 		panic(err)
+	}
+
+	log.Infof("Stopping")
+	stopCtx2, cancel2 := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel2()
+	if err := app.Stop(stopCtx2); err != nil {
+		log.Fatal(err)
 	}
 }
 
-func setUpContainerForIntegrationTests() *dig.Container {
-	container := dig.New()
-	container.Provide(configureMongo)
-	container.Provide(configureMinio)
-	container.Provide(configureHandler)
-	container.Provide(configureEcho)
-	container.Provide(configureMigrate)
-	container.Provide(configureAuthMiddleware)
-	container.Invoke(runMigrate)
+func runEcho2(test func(e *echo.Echo)) func(e *echo.Echo) {
+	return func(e *echo.Echo) {
+		//go func(){
+		test(e)
+		log.Infof("Test finished")
+		//}()
+		//test(e)
+		//log.Infof("Test finished")
+	}
+}
 
-	return container
+func setUpContainerForIntegrationTests(additional ...interface{}) fx.Option {
+	var arr []interface{}
+	arr = append(arr, configureMongo, configureMinio, configureHandler, configureEcho, configureMigrate, configureAuthMiddleware)
+	arr = append(arr, additional...)
+	return fx.Provide(arr...)
+
 }
 
 func stringToReadCloser(s string) io.ReadCloser {
@@ -108,11 +150,11 @@ func stringToReadCloser(s string) io.ReadCloser {
 }
 
 func TestLs(t *testing.T) {
-	container := setUpContainerForIntegrationTests()
 	testServer := makeOkAuthServer()
 	defer func() { testServer.Close() }()
 	viper.Set(AUTH_URL, testServer.URL)
-	container.Provide(client.NewRestClient)
+
+	container := setUpContainerForIntegrationTests(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/ls", nil, e, "sess-cookie-1")
@@ -123,11 +165,10 @@ func TestLs(t *testing.T) {
 }
 
 func TestUnauthorizedWithoutCookie(t *testing.T) {
-	container := setUpContainerForIntegrationTests()
 	testServer := makeOkAuthServer()
 	defer func() { testServer.Close() }()
 	viper.Set(AUTH_URL, testServer.URL)
-	container.Provide(client.NewRestClient)
+	container := setUpContainerForIntegrationTests(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		req := test.NewRequest("GET", "/ls", nil)
@@ -141,11 +182,10 @@ func TestUnauthorizedWithoutCookie(t *testing.T) {
 }
 
 func TestUnauthorizedByServer(t *testing.T) {
-	container := setUpContainerForIntegrationTests()
 	testServer := makeFailAuthServer()
 	defer func() { testServer.Close() }()
 	viper.Set(AUTH_URL, testServer.URL)
-	container.Provide(client.NewRestClient)
+	container := setUpContainerForIntegrationTests(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/ls", nil, e, "sess-cookie-1")
@@ -157,11 +197,10 @@ func TestUnauthorizedByServer(t *testing.T) {
 
 func TestStaticIndex(t *testing.T) {
 
-	container := setUpContainerForIntegrationTests()
 	testServer := makeOkAuthServer()
 	defer func() { testServer.Close() }()
 	viper.Set(AUTH_URL, testServer.URL)
-	container.Provide(client.NewRestClient)
+	container := setUpContainerForIntegrationTests(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		c, _, _ := request("GET", "/index.html", nil, e, "")
@@ -171,11 +210,10 @@ func TestStaticIndex(t *testing.T) {
 
 func TestStaticRoot(t *testing.T) {
 
-	container := setUpContainerForIntegrationTests()
 	testServer := makeOkAuthServer()
 	defer func() { testServer.Close() }()
 	viper.Set(AUTH_URL, testServer.URL)
-	container.Provide(client.NewRestClient)
+	container := setUpContainerForIntegrationTests(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/", nil, e, "")
@@ -186,11 +224,10 @@ func TestStaticRoot(t *testing.T) {
 
 func TestStaticAssets(t *testing.T) {
 
-	container := setUpContainerForIntegrationTests()
 	testServer := makeOkAuthServer()
 	defer func() { testServer.Close() }()
 	viper.Set(AUTH_URL, testServer.URL)
-	container.Provide(client.NewRestClient)
+	container := setUpContainerForIntegrationTests(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		c, b, _ := request("GET", "/test-assets/main.js", nil, e, "")
@@ -228,30 +265,12 @@ func getBytea(path string) []byte {
 	return dat
 }
 
-func makeOkAuthServer() *test.Server {
-	testServer := test.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(200)
-		res.Write([]byte(`{"id": 1, "login": "nikita k"}`))
-	}))
-	return testServer
-}
-
-func makeFailAuthServer() *test.Server {
-	testServer := test.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(401)
-		res.Write([]byte(`{"status":401,"error":"Unauthorized","message":"Доступ запрещен","timeStamp":"Mon Feb 11 00:14:12 MSK 2019","validationErrors":[]}`))
-
-	}))
-	return testServer
-}
-
 func TestUploadLs(t *testing.T) {
-	container := setUpContainerForIntegrationTests()
 
 	testServer := makeOkAuthServer()
 	defer func() { testServer.Close() }()
 	viper.Set(AUTH_URL, testServer.URL)
-	container.Provide(client.NewRestClient)
+	container := setUpContainerForIntegrationTests(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		path := "test-file.yml"
@@ -309,11 +328,10 @@ func jsonPathHelper(in, jsonPath string) interface{} {
 }
 
 func TestUploadDownloadDelete(t *testing.T) {
-	container := setUpContainerForIntegrationTests()
 	testServer := makeOkAuthServer()
 	defer func() { testServer.Close() }()
 	viper.Set(AUTH_URL, testServer.URL)
-	container.Provide(client.NewRestClient)
+	container := setUpContainerForIntegrationTests(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		path := "test-file.yml"
@@ -397,11 +415,10 @@ func getFileIdFromResp(rec *test.ResponseRecorder, t *testing.T) string {
 }
 
 func TestUploadRename(t *testing.T) {
-	container := setUpContainerForIntegrationTests()
 	testServer := makeOkAuthServer()
 	defer func() { testServer.Close() }()
 	viper.Set(AUTH_URL, testServer.URL)
-	container.Provide(client.NewRestClient)
+	container := setUpContainerForIntegrationTests(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		path := "test-file.yml"
@@ -462,11 +479,10 @@ func TestUploadRename(t *testing.T) {
 }
 
 func TestUploadPublish(t *testing.T) {
-	container := setUpContainerForIntegrationTests()
 	testServer := makeOkAuthServer()
 	defer func() { testServer.Close() }()
 	viper.Set(AUTH_URL, testServer.URL)
-	container.Provide(client.NewRestClient)
+	container := setUpContainerForIntegrationTests(client.NewRestClient)
 
 	runTest(container, func(e *echo.Echo) {
 		path := "test-file.yml"
