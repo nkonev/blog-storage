@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/minio/minio-go"
-	"github.com/mongodb/mongo-go-driver/bson"
-	"github.com/mongodb/mongo-go-driver/bson/primitive"
-	"github.com/mongodb/mongo-go-driver/mongo"
-	"github.com/mongodb/mongo-go-driver/mongo/options"
 	. "github.com/nkonev/blog-storage/logger"
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -49,6 +49,7 @@ const filename = "filename"
 const published = "published"
 const FormFile = "file"
 const userId = "userId"
+const collectionLimits = "limits"
 
 func NewFsHandler(minio *minio.Client, serverUrl string, client *mongo.Client) *FsHandler {
 	return &FsHandler{minio: minio, serverUrl: serverUrl, mongo: client}
@@ -62,7 +63,7 @@ func convertToFileMongoDto(elem bson.D) *fileMongoDto {
 
 }
 
-func toFileMongoDto(c mongo.Cursor) (*fileMongoDto, error) {
+func toFileMongoDto(c *mongo.Cursor) (*fileMongoDto, error) {
 	var elem bson.D
 	err := c.Decode(&elem)
 	if err != nil {
@@ -147,8 +148,8 @@ func (h *FsHandler) getUserIdByGlobalId(objectId string) (int, error) {
 	if err := one.Decode(&elem); err != nil {
 		return 0, err
 	}
-	userId64 := elem.Map()[userId].(int64)
-	return int(userId64), nil
+	userId32 := elem.Map()[userId].(int32)
+	return int(userId32), nil
 }
 
 func (h *FsHandler) getPrivateUrlFromObject(objInfo minio.ObjectInfo) (*string, error) {
@@ -549,6 +550,9 @@ func (h *FsHandler) isDocumentExists(collection string, request interface{}, opt
 	// https://siongui.github.io/2017/03/13/go-pass-slice-or-array-as-variadic-parameter/#id12
 	res := database.Collection(collection).FindOne(context.TODO(), request, opts[:]...)
 	if res.Err() != nil {
+		if res.Err() == mongo.ErrNoDocuments {
+			return false, nil
+		}
 		Logger.Errorf("Error during find '%v' : %v", request, res.Err())
 		return false, res.Err()
 	}
@@ -556,12 +560,8 @@ func (h *FsHandler) isDocumentExists(collection string, request interface{}, opt
 	_, e := res.DecodeBytes()
 
 	if e != nil {
-		if e == mongo.ErrNoDocuments {
-			return false, nil
-		} else {
-			Logger.Errorf("Error during DecodeBytes '%v' : %v", request, res.Err())
-			return false, e
-		}
+		Logger.Errorf("Error during DecodeBytes '%v' : %v", request, res.Err())
+		return false, e
 	} else {
 		return true, nil
 	}
@@ -590,7 +590,7 @@ func (h *FsHandler) DeletePublish(c echo.Context) error {
 }
 
 func (h *FsHandler) getMaxAllowedConsumption(userId int) (int64, error) {
-	b, e := h.isDocumentExists("limits", bson.D{{id, userId}})
+	b, e := h.isDocumentExists(collectionLimits, bson.D{{id, userId}})
 	if e != nil {
 		return 0, e
 	}

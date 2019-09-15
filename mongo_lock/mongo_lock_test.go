@@ -3,10 +3,10 @@ package mongo_lock
 import (
 	"context"
 	"fmt"
-	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/nkonev/blog-storage/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/mongo"
 	"os"
 	"strings"
 	"sync"
@@ -133,7 +133,8 @@ func hasIndex(coll *mongo.Collection, indexName string) bool {
 	}
 	var hasUniqueIndex bool
 	for cursor.Next(context.TODO()) {
-		bytes, e := cursor.DecodeBytes()
+		var bytes []byte
+		e := cursor.Decode(bytes)
 		str := fmt.Sprintf("%v", bytes)
 		if strings.Contains(str, indexName) {
 			hasUniqueIndex = true

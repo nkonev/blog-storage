@@ -4,10 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/mongodb/mongo-go-driver/mongo"
-	"github.com/mongodb/mongo-go-driver/x/network/connstring"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 	"golang.org/x/crypto/bcrypt"
 	"regexp"
 	"time"
@@ -79,7 +80,7 @@ const USER_PREFIX = "user"
 
 func GetMongoClient() *mongo.Client {
 	mongoUrl := GetMongoUrl()
-	client, err := mongo.NewClient(mongoUrl)
+	client, err := mongo.NewClient(options.Client().ApplyURI(mongoUrl))
 	if err != nil {
 		log.Panicf("Error during create mongo client: %v", err)
 	}

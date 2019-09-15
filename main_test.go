@@ -121,12 +121,8 @@ func runTest(container fx.Option, test func(e *echo.Echo)) {
 
 func runEcho2(test func(e *echo.Echo)) func(e *echo.Echo) {
 	return func(e *echo.Echo) {
-		//go func(){
 		test(e)
 		Logger.Infof("Test finished")
-		//}()
-		//test(e)
-		//Logger.Infof("Test finished")
 	}
 }
 

@@ -2,8 +2,8 @@ package utils
 
 import (
 	"context"
-	"github.com/mongodb/mongo-go-driver/x/network/connstring"
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 )
 
 func DropMongo() {

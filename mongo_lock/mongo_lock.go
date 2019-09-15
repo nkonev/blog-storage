@@ -2,11 +2,11 @@ package mongo_lock
 
 import (
 	"context"
-	"github.com/mongodb/mongo-go-driver/bson"
-	"github.com/mongodb/mongo-go-driver/mongo"
-	"github.com/mongodb/mongo-go-driver/mongo/options"
 	. "github.com/nkonev/blog-storage/logger"
 	"github.com/nkonev/blog-storage/utils"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -53,6 +53,11 @@ func ensureIndex(client *mongo.Client, lockCollection string) {
 	}
 }
 
+func getUpdateDoc(p bson.M) bson.M {
+	update := bson.M{"$set": p}
+	return update
+}
+
 func (ml *mongoLock) AcquireLock() {
 	ensureIndex(ml.mongoClient, ml.lockCollection)
 	database := utils.GetMongoDatabase(ml.mongoClient)
@@ -60,8 +65,9 @@ func (ml *mongoLock) AcquireLock() {
 	var upsert = true
 	duration, _ := time.ParseDuration("1s")
 
+
 	for {
-		result, err := database.Collection(ml.lockCollection).UpdateOne(context.TODO(), ml.idDoc, bson.D{}, &options.UpdateOptions{Upsert: &upsert})
+		result, err := database.Collection(ml.lockCollection).UpdateOne(context.TODO(), ml.idDoc, getUpdateDoc(bson.M{"lastAcquired": time.Now()}), &options.UpdateOptions{Upsert: &upsert})
 		if err != nil {
 			Logger.Panicf("Error during acquiring lock: %v", err)
 		} else {
