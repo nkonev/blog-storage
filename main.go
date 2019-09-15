@@ -13,7 +13,7 @@ import (
 	"github.com/nkonev/blog-storage/client"
 	"github.com/nkonev/blog-storage/handlers"
 	. "github.com/nkonev/blog-storage/logger"
-	"github.com/nkonev/blog-storage/migrate_packr"
+	"github.com/nkonev/blog-storage/migrate_rice"
 	"github.com/nkonev/blog-storage/mongo_lock"
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
@@ -181,12 +181,12 @@ func configureHandler(minio *minio.Client, mongo *mongo.Client) *handlers.FsHand
 func configureMigrate() *migrate.Migrate {
 	box := rice.MustFindBox("migrations")
 
-	driver, err := migrate_packr.WithInstance(box)
+	driver, err := migrate_rice.WithInstance(box)
 	if err != nil {
 		Logger.Panicf("Error during create migrator driver: %v", err)
 	}
 
-	m, err := migrate.NewWithSourceInstance(migrate_packr.PackrName, driver, utils.GetMongoUrl())
+	m, err := migrate.NewWithSourceInstance(migrate_rice.Name, driver, utils.GetMongoUrl())
 
 	if err != nil {
 		Logger.Panicf("Error during create migrator: %v", err)

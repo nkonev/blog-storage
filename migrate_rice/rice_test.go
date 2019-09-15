@@ -1,4 +1,4 @@
-package migrate_packr
+package migrate_rice
 
 import (
 	rice "github.com/GeertJohan/go.rice"

@@ -1,4 +1,4 @@
-package migrate_packr
+package migrate_rice
 
 import (
 	"bytes"
@@ -10,10 +10,10 @@ import (
 	"os"
 )
 
-const PackrName = "packr"
+const Name = "rice"
 
 func init() {
-	source.Register(PackrName, &Packr{})
+	source.Register(Name, &Packr{})
 }
 
 type Packr struct {
