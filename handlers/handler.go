@@ -118,7 +118,7 @@ const global_objects = "global_objects"
 
 func (h *FsHandler) getNextGlobalId(userIdV int) (*string, error) {
 	database := utils.GetMongoDatabase(h.mongo)
-	ms := bson.M{userId: userIdV}
+	ms := bson.M{userId: int64(userIdV)}
 	result, e := database.Collection(global_objects).InsertOne(context.TODO(), ms)
 	if e != nil {
 		return nil, e
@@ -148,8 +148,8 @@ func (h *FsHandler) getUserIdByGlobalId(objectId string) (int, error) {
 	if err := one.Decode(&elem); err != nil {
 		return 0, err
 	}
-	userId32 := elem.Map()[userId].(int32)
-	return int(userId32), nil
+	userId64 := elem.Map()[userId].(int64)
+	return int(userId64), nil
 }
 
 func (h *FsHandler) getPrivateUrlFromObject(objInfo minio.ObjectInfo) (*string, error) {
