@@ -32,30 +32,17 @@ func WithInstance(instance interface{}) (source.Driver, error) {
 	}
 	bx := instance.(*rice.Box)
 
-
 	driver := &Packr{
 		box:        bx,
 		migrations: source.NewMigrations(),
 		path:       bx.Name(),
 	}
 
-	//bx.List()
 	if err := bx.Walk("", func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
-		/*file, err := bx.Open(path)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		var arr []byte  = make([]byte, info.Size())
-		_, err = file.Read(arr)
-		if err != nil {
-			return err
-		}*/
 
-		//s := string(arr)
 		m, err := source.DefaultParse(path)
 		if err != nil {
 			return err
@@ -68,16 +55,6 @@ func WithInstance(instance interface{}) (source.Driver, error) {
 	}); err != nil {
 		return nil, err
 	}
-	/*for _, fi := range bx.List() {
-		m, err := source.DefaultParse(fi)
-		if err != nil {
-			continue // ignore files that we can't parse
-		}
-
-		if !driver.migrations.Append(m) {
-			return nil, fmt.Errorf("unable to parse file %v", fi)
-		}
-	}*/
 
 	return driver, nil
 }

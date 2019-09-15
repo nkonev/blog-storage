@@ -8,26 +8,23 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log"
 	"github.com/minio/minio-go"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/nkonev/blog-storage/client"
 	"github.com/nkonev/blog-storage/handlers"
+	. "github.com/nkonev/blog-storage/logger"
 	"github.com/nkonev/blog-storage/migrate_packr"
 	"github.com/nkonev/blog-storage/mongo_lock"
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 )
 
 func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc, lc fx.Lifecycle) *echo.Echo {
 	bodyLimit := viper.GetString("server.body.limit")
-
-	log.SetOutput(os.Stdout)
 
 	static := rice.MustFindBox("static").HTTPBox()
 
@@ -54,7 +51,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc, 
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			// do some work on application stop (like closing connections and files)
-			log.Infof("Stopping server")
+			Logger.Infof("Stopping server")
 			return e.Shutdown(ctx)
 		},
 	})
@@ -80,7 +77,7 @@ func getStaticMiddleware(box *rice.HTTPBox) echo.MiddlewareFunc {
 func checkUrlInWhitelist(whitelist []regexp.Regexp, uri string) bool {
 	for _, regexp0 := range whitelist {
 		if regexp0.MatchString(uri) {
-			log.Infof("Skipping authentication for %v because it matches %v", uri, regexp0.String())
+			Logger.Infof("Skipping authentication for %v because it matches %v", uri, regexp0.String())
 			return true
 		}
 	}
@@ -101,7 +98,7 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 
 			sessionCookie, err := c.Request().Cookie(SESSION_COOKIE)
 			if err != nil {
-				log.Infof("Error get '%v' cookie: %v", SESSION_COOKIE, err)
+				Logger.Infof("Error get '%v' cookie: %v", SESSION_COOKIE, err)
 				return c.JSON(http.StatusUnauthorized, &utils.H{"status": "unauthorized"})
 			}
 
@@ -111,7 +108,7 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 				"GET", authUrl, nil,
 			)
 			if err != nil {
-				log.Errorf("Error during create request: %v", err)
+				Logger.Errorf("Error during create request: %v", err)
 				return err
 			}
 
@@ -119,7 +116,7 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 			req.Header.Add("Accept", "application/json")
 			resp, err := httpClient.Do(req)
 			if err != nil {
-				log.Errorf("Error during requesting auth backend: %v", err)
+				Logger.Errorf("Error during requesting auth backend: %v", err)
 				return err
 			}
 			defer resp.Body.Close()
@@ -130,7 +127,7 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 			var decodedResponse interface{}
 			err = decoder.Decode(&decodedResponse)
 			if err != nil {
-				log.Errorf("Error during decoding json: %v", err)
+				Logger.Errorf("Error during decoding json: %v", err)
 				return err
 			}
 
@@ -140,14 +137,14 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 				dto := decodedResponse.(map[string]interface{})
 				i, ok := dto["id"].(float64)
 				if !ok {
-					log.Errorf("Error during casting to int")
+					Logger.Errorf("Error during casting to int")
 					return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
 				}
 				c.Set(utils.USER_ID, int(i))
 				c.Set(utils.USER_LOGIN, dto["login"])
 				return next(c)
 			} else {
-				log.Errorf("Unknown auth status %v", resp.StatusCode)
+				Logger.Errorf("Unknown auth status %v", resp.StatusCode)
 				return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
 			}
 
@@ -156,9 +153,11 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 }
 
 func main() {
+
 	utils.InitViper("./config-dev/config.yml")
 
 	app := fx.New(
+		fx.Logger(Logger),
 		fx.Provide(
 			configureMongo,
 			configureMinio,
@@ -172,7 +171,7 @@ func main() {
 	)
 	app.Run()
 
-	log.Infof("Exit program")
+	Logger.Infof("Exit program")
 }
 
 func configureHandler(minio *minio.Client, mongo *mongo.Client) *handlers.FsHandler {
@@ -184,13 +183,13 @@ func configureMigrate() *migrate.Migrate {
 
 	driver, err := migrate_packr.WithInstance(box)
 	if err != nil {
-		log.Panicf("Error during create migrator driver: %v", err)
+		Logger.Panicf("Error during create migrator driver: %v", err)
 	}
 
 	m, err := migrate.NewWithSourceInstance(migrate_packr.PackrName, driver, utils.GetMongoUrl())
 
 	if err != nil {
-		log.Panicf("Error during create migrator: %v", err)
+		Logger.Panicf("Error during create migrator: %v", err)
 	}
 	return m
 }
@@ -208,12 +207,12 @@ func runMigrate(m *migrate.Migrate) {
 	defer m.Close()
 	if err != nil {
 		if err.Error() == "no change" {
-			log.Info("Migration(s) already applied")
+			Logger.Info("Migration(s) already applied")
 		} else {
-			log.Panicf("Error during applying migrations: %v", err)
+			Logger.Panicf("Error during applying migrations: %v", err)
 		}
 	}
-	log.Info("Migration run successfully")
+	Logger.Info("Migration run successfully")
 
 	lock.ReleaseLock()
 }
@@ -227,7 +226,7 @@ func configureMinio() *minio.Client {
 	// Initialize minio client object.
 	minioClient, err := minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
 	if err != nil {
-		log.Fatal(err)
+		Logger.Fatal(err)
 	}
 
 	return minioClient
@@ -238,7 +237,7 @@ func configureMongo(lc fx.Lifecycle) *mongo.Client {
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			// do some work on application stop (like closing connections and files)
-			log.Infof("Stopping mongo client")
+			Logger.Infof("Stopping mongo client")
 			return mongoClient.Disconnect(ctx)
 		},
 	})
@@ -250,12 +249,12 @@ func configureMongo(lc fx.Lifecycle) *mongo.Client {
 func runEcho(e *echo.Echo) {
 	address := viper.GetString("server.address")
 
-	log.Info("Starting server...")
+	Logger.Info("Starting server...")
 	// Start server in another goroutine
 	go func() {
 		if err := e.Start(address); err != nil {
-			log.Infof("server shut down: %v", err)
+			Logger.Infof("server shut down: %v", err)
 		}
 	}()
-	log.Info("Server started. Waiting for interrupt (2) (Ctrl+C)")
+	Logger.Info("Server started. Waiting for interrupt (2) (Ctrl+C)")
 }

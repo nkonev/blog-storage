@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
 	"github.com/minio/minio-go"
 	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/mongodb/mongo-go-driver/bson/primitive"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/mongo/options"
+	. "github.com/nkonev/blog-storage/logger"
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
 	"mime/multipart"
@@ -90,7 +90,7 @@ func (h *FsHandler) getMetainfoFromMongo(objectId string, userId int) (*fileMong
 	userFilesCollection := h.getUserCollectionInt(userId)
 	ds, err := getIdDoc(objectId)
 	if err != nil {
-		log.Errorf("Error during creating id document %v", objectId)
+		Logger.Errorf("Error during creating id document %v", objectId)
 		return nil, err
 	}
 
@@ -99,14 +99,14 @@ func (h *FsHandler) getMetainfoFromMongo(objectId string, userId int) (*fileMong
 		return nil, errors.New("Unexpected nil by id " + objectId)
 	}
 	if one.Err() != nil {
-		log.Errorf("Error during querying record from mongo by key %v", objectId)
+		Logger.Errorf("Error during querying record from mongo by key %v", objectId)
 		return nil, one.Err()
 	}
 
 	var elem bson.D
 	if err := one.Decode(&elem); err != nil {
 		if err == mongo.ErrNoDocuments {
-			log.Errorf("No documents found by key %v", objectId)
+			Logger.Errorf("No documents found by key %v", objectId)
 		}
 		return nil, err
 	}
@@ -137,9 +137,9 @@ func (h *FsHandler) getUserIdByGlobalId(objectId string) (int, error) {
 	one := database.Collection(global_objects).FindOne(context.TODO(), ms)
 	if one.Err() != nil {
 		if one.Err() != mongo.ErrNoDocuments {
-			log.Errorf("Error during get user id by global id %v", objectId)
+			Logger.Errorf("Error during get user id by global id %v", objectId)
 		} else {
-			log.Infof("No documents found by global id %v", objectId)
+			Logger.Infof("No documents found by global id %v", objectId)
 		}
 		return 0, one.Err()
 	}
@@ -162,16 +162,16 @@ func (h *FsHandler) getPrivateUrlFromObject(objInfo minio.ObjectInfo) (*string, 
 }
 
 func (h *FsHandler) LsHandler(c echo.Context) error {
-	log.Debugf("Get userId: %v; userLogin: %v", c.Get(utils.USER_ID), c.Get(utils.USER_LOGIN))
+	Logger.Debugf("Get userId: %v; userLogin: %v", c.Get(utils.USER_ID), c.Get(utils.USER_LOGIN))
 
 	bucket := h.ensureAndGetBucket(c)
 
-	log.Debugf("Listing bucket '%v':", bucket)
+	Logger.Debugf("Listing bucket '%v':", bucket)
 
 	userFilesCollection := h.getUserCollection(c)
 	userFilesCursor, e := userFilesCollection.Find(context.TODO(), bson.D{})
 	if e != nil {
-		log.Errorf("Error during querying record from mongo")
+		Logger.Errorf("Error during querying record from mongo")
 		return e
 	}
 	defer userFilesCursor.Close(context.TODO())
@@ -180,21 +180,21 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 	for userFilesCursor.Next(context.TODO()) {
 		mongoDto, err := toFileMongoDto(userFilesCursor)
 		if err != nil {
-			log.Errorf("Error during get mongo dto: %v", err)
+			Logger.Errorf("Error during get mongo dto: %v", err)
 			return err
 		}
 
 		obj, err := h.minio.GetObject(bucket, mongoDto.id, minio.GetObjectOptions{})
 		if err != nil {
-			log.Errorf("Error during GetObject: %v", err)
+			Logger.Errorf("Error during GetObject: %v", err)
 			return err
 		}
 		objInfo, err := obj.Stat()
 		if err != nil {
-			log.Errorf("Error during stat: %v", err)
+			Logger.Errorf("Error during stat: %v", err)
 			return err
 		}
-		log.Debugf("Object '%v'", objInfo.Key)
+		Logger.Debugf("Object '%v'", objInfo.Key)
 
 		publicUrl := ""
 		if mongoDto.published {
@@ -203,7 +203,7 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 
 		downloadUrl, err := h.getPrivateUrlFromObject(objInfo)
 		if err != nil {
-			log.Errorf("Error get private url: %v", err)
+			Logger.Errorf("Error get private url: %v", err)
 			return err
 		}
 
@@ -218,17 +218,17 @@ func (h *FsHandler) insertMetaInfoToMongo(c echo.Context, filename string, userI
 
 	globalId, err := h.getNextGlobalId(userId)
 	if err != nil {
-		log.Errorf("Error during create mongo global id document: %v", err)
+		Logger.Errorf("Error during create mongo global id document: %v", err)
 		return nil, err
 	}
 	metainfoDocument, err := getMongoMetainfoDocument(globalId, filename)
 	if err != nil {
-		log.Errorf("Error during construct mongo global id document: %v", err)
+		Logger.Errorf("Error during construct mongo global id document: %v", err)
 		return nil, err
 	}
 	inserted, err := h.getUserCollection(c).InsertOne(context.TODO(), metainfoDocument)
 	if err != nil {
-		log.Errorf("Error during create mongo metadata document: %v", err)
+		Logger.Errorf("Error during create mongo metadata document: %v", err)
 		return nil, err
 	}
 	idMongo := inserted.InsertedID.(primitive.ObjectID).Hex()
@@ -243,11 +243,11 @@ func (h *FsHandler) checkUserLimit(bucketName string, c echo.Context, file *mult
 	}
 	maxAllowed, err := h.getMaxAllowedConsumption(userId)
 	if err != nil {
-		log.Errorf("Error during calculating max allowed %v", err)
+		Logger.Errorf("Error during calculating max allowed %v", err)
 		return false, err
 	}
 	if consumption+file.Size > maxAllowed {
-		log.Infof("Upload too large %v+%v>%v bytes", consumption, file.Size, maxAllowed)
+		Logger.Infof("Upload too large %v+%v>%v bytes", consumption, file.Size, maxAllowed)
 		return false, nil
 	}
 	return true, nil
@@ -257,7 +257,7 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 
 	file, err := c.FormFile(FormFile)
 	if err != nil {
-		log.Errorf("Error during extracting form %v parameter: %v", FormFile, err)
+		Logger.Errorf("Error during extracting form %v parameter: %v", FormFile, err)
 		return err
 	}
 
@@ -273,7 +273,7 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 
 	contentType := file.Header.Get("Content-Type")
 
-	log.Debugf("Determined content type: %v", contentType)
+	Logger.Debugf("Determined content type: %v", contentType)
 
 	src, err := file.Open()
 	if err != nil {
@@ -292,7 +292,7 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 	}
 
 	if _, err := h.minio.PutObject(bucketName, *mongoId, src, file.Size, minio.PutObjectOptions{ContentType: contentType}); err != nil {
-		log.Errorf("Error during upload object: %v", err)
+		Logger.Errorf("Error during upload object: %v", err)
 		return err
 	}
 
@@ -327,7 +327,7 @@ func getBucketName(c echo.Context) string {
 func getUserIdFromRequest(c echo.Context) (int, error) {
 	i, ok := c.Get(utils.USER_ID).(int)
 	if !ok {
-		log.Errorf("Error during get(cast) userId")
+		Logger.Errorf("Error during get(cast) userId")
 		return 0, errors.New("Error during get(cast) userId")
 	}
 	return i, nil
@@ -354,12 +354,12 @@ func (h *FsHandler) ensureBucket(bucketName, location string) {
 		// Check to see if we already own this bucket (which happens if you run this twice)
 		exists, err := h.minio.BucketExists(bucketName)
 		if err == nil && exists {
-			log.Debugf("Bucket '%s' already present", bucketName)
+			Logger.Debugf("Bucket '%s' already present", bucketName)
 		} else {
-			log.Fatal(err)
+			Logger.Fatal(err)
 		}
 	} else {
-		log.Infof("Successfully created bucket '%s'", bucketName)
+		Logger.Infof("Successfully created bucket '%s'", bucketName)
 	}
 
 }
@@ -456,7 +456,7 @@ func (h *FsHandler) DeleteHandler(c echo.Context) error {
 	objId := getFileId(c)
 
 	if err := h.minio.RemoveObject(bucketName, objId); err != nil {
-		log.Errorf("Error during remove object from minio: %v", err)
+		Logger.Errorf("Error during remove object from minio: %v", err)
 		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
 	}
 
@@ -467,7 +467,7 @@ func (h *FsHandler) DeleteHandler(c echo.Context) error {
 	}
 	_, e := userFilesCollection.DeleteOne(context.TODO(), findDocument)
 	if e != nil {
-		log.Errorf("Error during remove object from mongo: %v", e)
+		Logger.Errorf("Error during remove object from mongo: %v", e)
 		return e
 	}
 
@@ -479,7 +479,7 @@ func (h *FsHandler) Limits(c echo.Context) error {
 
 	userId, ok := c.Get(utils.USER_ID).(int)
 	if !ok {
-		log.Errorf("Error during get(cast) userId")
+		Logger.Errorf("Error during get(cast) userId")
 	}
 
 	max, e := h.getMaxAllowedConsumption(userId)
@@ -498,7 +498,7 @@ func (h *FsHandler) calcUserFilesConsumption(bucketName string) int64 {
 	doneCh := make(chan struct{})
 	defer close(doneCh)
 
-	log.Debugf("Listing bucket '%v':", bucketName)
+	Logger.Debugf("Listing bucket '%v':", bucketName)
 	for objInfo := range h.minio.ListObjects(bucketName, "", recursive, doneCh) {
 		totalBucketConsumption += objInfo.Size
 	}
@@ -549,7 +549,7 @@ func (h *FsHandler) isDocumentExists(collection string, request interface{}, opt
 	// https://siongui.github.io/2017/03/13/go-pass-slice-or-array-as-variadic-parameter/#id12
 	res := database.Collection(collection).FindOne(context.TODO(), request, opts[:]...)
 	if res.Err() != nil {
-		log.Errorf("Error during find '%v' : %v", request, res.Err())
+		Logger.Errorf("Error during find '%v' : %v", request, res.Err())
 		return false, res.Err()
 	}
 
@@ -559,7 +559,7 @@ func (h *FsHandler) isDocumentExists(collection string, request interface{}, opt
 		if e == mongo.ErrNoDocuments {
 			return false, nil
 		} else {
-			log.Errorf("Error during DecodeBytes '%v' : %v", request, res.Err())
+			Logger.Errorf("Error during DecodeBytes '%v' : %v", request, res.Err())
 			return false, e
 		}
 	} else {

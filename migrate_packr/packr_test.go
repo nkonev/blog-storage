@@ -2,10 +2,9 @@ package migrate_packr
 
 import (
 	rice "github.com/GeertJohan/go.rice"
-	"log"
-	"testing"
-
 	st "github.com/golang-migrate/migrate/v4/source/testing"
+	log "github.com/sirupsen/logrus"
+	"testing"
 )
 
 func Test(t *testing.T) {

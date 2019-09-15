@@ -2,10 +2,10 @@ package mongo_lock
 
 import (
 	"context"
-	"github.com/labstack/gommon/log"
 	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/mongodb/mongo-go-driver/mongo/options"
+	. "github.com/nkonev/blog-storage/logger"
 	"github.com/nkonev/blog-storage/utils"
 	"time"
 )
@@ -28,7 +28,7 @@ func createBson(data string) bson.D {
 	bdoc := bson.D{}
 	err := bson.UnmarshalExtJSON([]byte(data), true, &bdoc)
 	if err != nil {
-		log.Panicf("Error during creating bson from \"%v\": %v", data, err)
+		Logger.Panicf("Error during creating bson from \"%v\": %v", data, err)
 	}
 	return bdoc
 }
@@ -49,7 +49,7 @@ func ensureIndex(client *mongo.Client, lockCollection string) {
         ]
 }`))
 	if commandResult.Err() != nil {
-		log.Panicf("Error during creating unique index: %v", commandResult.Err())
+		Logger.Panicf("Error during creating unique index: %v", commandResult.Err())
 	}
 }
 
@@ -63,13 +63,13 @@ func (ml *mongoLock) AcquireLock() {
 	for {
 		result, err := database.Collection(ml.lockCollection).UpdateOne(context.TODO(), ml.idDoc, bson.D{}, &options.UpdateOptions{Upsert: &upsert})
 		if err != nil {
-			log.Panicf("Error during acquiring lock: %v", err)
+			Logger.Panicf("Error during acquiring lock: %v", err)
 		} else {
 			if result.UpsertedID != nil {
-				log.Infof("Lock has been acquired")
+				Logger.Infof("Lock has been acquired")
 				break
 			} else {
-				log.Infof("Lock has n' t been acquired - waiting %v", duration)
+				Logger.Infof("Lock has n' t been acquired - waiting %v", duration)
 				time.Sleep(duration)
 				continue
 			}
@@ -81,7 +81,7 @@ func (ml *mongoLock) ReleaseLock() {
 	database := utils.GetMongoDatabase(ml.mongoClient)
 	_, err := database.Collection(ml.lockCollection).DeleteOne(context.TODO(), ml.idDoc)
 	if err != nil {
-		log.Panicf("Error during releasing lock: %v", err)
+		Logger.Panicf("Error during releasing lock: %v", err)
 	}
-	log.Infof("Lock successfully released")
+	Logger.Infof("Lock successfully released")
 }

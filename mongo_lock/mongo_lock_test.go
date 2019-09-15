@@ -3,9 +3,9 @@ package mongo_lock
 import (
 	"context"
 	"fmt"
-	"github.com/labstack/gommon/log"
 	"github.com/mongodb/mongo-go-driver/mongo"
 	"github.com/nkonev/blog-storage/utils"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"

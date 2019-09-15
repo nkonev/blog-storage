@@ -4,32 +4,25 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/labstack/echo/v4"
+	"github.com/nkonev/blog-storage/client"
 	"github.com/nkonev/blog-storage/handlers"
+	. "github.com/nkonev/blog-storage/logger"
+	"github.com/nkonev/blog-storage/utils"
 	"github.com/oliveagle/jsonpath"
 	uuid "github.com/satori/go.uuid"
-	"mime/multipart"
-	"strings"
-	"time"
-
-	//"encoding/json"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
-	"github.com/nkonev/blog-storage/client"
-	//"github.com/nkonev/blog-storage/handlers"
-	"github.com/nkonev/blog-storage/utils"
-	//"github.com/oliveagle/jsonpath"
-	//"github.com/satori/go.uuid"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/fx"
 	"io"
 	"io/ioutil"
-	//"mime/multipart"
+	"mime/multipart"
 	"net/http"
 	test "net/http/httptest"
 	"os"
-	//"strings"
+	"strings"
 	"testing"
+	"time"
 )
 
 func makeOkAuthServer() *test.Server {
@@ -57,19 +50,19 @@ func TestMain(m *testing.M) {
 }
 
 func shutdown() {
-	log.Info("Shutting down")
+	Logger.Info("Shutting down")
 }
 
 func setup() {
 	utils.InitViper("./config-dev/config.yml")
 
-	log.Info("Set up")
+	Logger.Info("Set up")
 	utils.DropMongo()
 
 	mc := configureMinio()
 	infos, err := mc.ListBuckets()
 	if err != nil {
-		log.Panicf("Error during listing buckets: %v", err)
+		Logger.Panicf("Error during listing buckets: %v", err)
 	}
 	for _, b := range infos {
 		// Create a done channel.
@@ -77,18 +70,18 @@ func setup() {
 		defer close(doneCh)
 		// Recurively list all objects in 'mytestbucket'
 		recursive := true
-		log.Infof("Listing bucket '%v':", b.Name)
+		Logger.Infof("Listing bucket '%v':", b.Name)
 		for objInfo := range mc.ListObjects(b.Name, "", recursive, doneCh) {
-			log.Infof("Object '%v'", objInfo.Key)
+			Logger.Infof("Object '%v'", objInfo.Key)
 			err := mc.RemoveObject(b.Name, objInfo.Key)
 			if err != nil {
-				log.Panicf("Error during dropping object %v: %v", objInfo.Key, err)
+				Logger.Panicf("Error during dropping object %v: %v", objInfo.Key, err)
 			}
 		}
 
 		err := mc.RemoveBucket(b.Name)
 		if err != nil {
-			log.Panicf("Error during dropping bucket %v: %v", b.Name, err)
+			Logger.Panicf("Error during dropping bucket %v: %v", b.Name, err)
 		}
 	}
 }
@@ -111,18 +104,18 @@ func runTest(container fx.Option, test func(e *echo.Echo)) {
 		container,
 		fx.Invoke(runMigrate, runEcho2(test)),
 	)
-	log.Infof("Running")
+	Logger.Infof("Running")
 	stopCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := app.Start(stopCtx); err != nil {
 		panic(err)
 	}
 
-	log.Infof("Stopping")
+	Logger.Infof("Stopping")
 	stopCtx2, cancel2 := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel2()
 	if err := app.Stop(stopCtx2); err != nil {
-		log.Fatal(err)
+		Logger.Fatal(err)
 	}
 }
 
@@ -130,10 +123,10 @@ func runEcho2(test func(e *echo.Echo)) func(e *echo.Echo) {
 	return func(e *echo.Echo) {
 		//go func(){
 		test(e)
-		log.Infof("Test finished")
+		Logger.Infof("Test finished")
 		//}()
 		//test(e)
-		//log.Infof("Test finished")
+		//Logger.Infof("Test finished")
 	}
 }
 
@@ -160,7 +153,7 @@ func TestLs(t *testing.T) {
 		c, b, _ := request("GET", "/ls", nil, e, "sess-cookie-1")
 		assert.Equal(t, http.StatusOK, c)
 		assert.NotEmpty(t, b)
-		log.Infof("Got body: %v", b)
+		Logger.Infof("Got body: %v", b)
 	})
 }
 
@@ -177,7 +170,7 @@ func TestUnauthorizedWithoutCookie(t *testing.T) {
 
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 		assert.NotEmpty(t, rec.Body.String())
-		log.Infof("Got body: %v", rec.Body.String())
+		Logger.Infof("Got body: %v", rec.Body.String())
 	})
 }
 
@@ -191,7 +184,7 @@ func TestUnauthorizedByServer(t *testing.T) {
 		c, b, _ := request("GET", "/ls", nil, e, "sess-cookie-1")
 		assert.Equal(t, http.StatusUnauthorized, c)
 		assert.NotEmpty(t, b)
-		log.Infof("Got body: %v", b)
+		Logger.Infof("Got body: %v", b)
 	})
 }
 
@@ -242,17 +235,17 @@ func getMultipart(bytea []byte, filename string) (*bytes.Buffer, string) {
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile(handlers.FormFile, filename)
 	if err != nil {
-		log.Panicf("Error during creating form file")
+		Logger.Panicf("Error during creating form file")
 	}
 
 	_, err = io.Copy(part, bytes.NewReader(bytea))
 	if err != nil {
-		log.Panicf("Error during copy")
+		Logger.Panicf("Error during copy")
 	}
 
 	err = writer.Close()
 	if err != nil {
-		log.Panicf("Error during closing writer")
+		Logger.Panicf("Error during closing writer")
 	}
 	return body, writer.FormDataContentType()
 }
@@ -260,7 +253,7 @@ func getMultipart(bytea []byte, filename string) (*bytes.Buffer, string) {
 func getBytea(path string) []byte {
 	dat, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Panicf("Error during reading file")
+		Logger.Panicf("Error during reading file")
 	}
 	return dat
 }
@@ -291,7 +284,7 @@ func TestUploadLs(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 		}
 
 		{
@@ -305,7 +298,7 @@ func TestUploadLs(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 
 			var arr = jsonPathHelper(rec.Body.String(), "$.files[?(@.filename =~ /(?i).*ls.*/)].filename").([]interface{})
 			assert.Equal(t, fileName, arr[0])
@@ -317,12 +310,12 @@ func jsonPathHelper(in, jsonPath string) interface{} {
 	var jsonData interface{}
 	err := json.Unmarshal([]byte(in), &jsonData)
 	if err != nil {
-		log.Panicf("Error during unmarshall: %v", err)
+		Logger.Panicf("Error during unmarshall: %v", err)
 	}
 
 	res, err := jsonpath.JsonPathLookup(jsonData, jsonPath)
 	if err != nil {
-		log.Panicf("Error during requesting jsonpath: %v", err)
+		Logger.Panicf("Error during requesting jsonpath: %v", err)
 	}
 	return res
 }
@@ -354,7 +347,7 @@ func TestUploadDownloadDelete(t *testing.T) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
 			fileId = getFileIdFromResp(rec, t)
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 		}
 
 		{
@@ -370,7 +363,7 @@ func TestUploadDownloadDelete(t *testing.T) {
 			assert.True(t, "927" == rec.Header().Get(echo.HeaderContentLength))
 			assert.Equal(t, "application/octet-stream", rec.Header().Get(echo.HeaderContentType))
 			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
 		}
 
@@ -385,7 +378,7 @@ func TestUploadDownloadDelete(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 		}
 
 		{
@@ -441,7 +434,7 @@ func TestUploadRename(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 			fileId = getFileIdFromResp(rec, t)
 		}
 
@@ -457,7 +450,7 @@ func TestUploadRename(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 		}
 
 		{
@@ -471,7 +464,7 @@ func TestUploadRename(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
 		}
 
@@ -504,7 +497,7 @@ func TestUploadPublish(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 			fileId = getFileIdFromResp(rec, t)
 		}
 
@@ -527,7 +520,7 @@ func TestUploadPublish(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 		}
 
 		{
@@ -537,7 +530,7 @@ func TestUploadPublish(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 			assert.True(t, strings.Index(rec.Body.String(), "# This file used for both developer and demo purposes") == 0)
 		}
 
@@ -552,7 +545,7 @@ func TestUploadPublish(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.NotEmpty(t, rec.Body.String())
-			log.Infof("Got body: %v", rec.Body.String())
+			Logger.Infof("Got body: %v", rec.Body.String())
 		}
 
 		{
