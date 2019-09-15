@@ -1,3 +1,5 @@
+//+build wireinject
+
 package main
 
 import (
@@ -6,6 +8,7 @@ import (
 	"github.com/GeertJohan/go.rice"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
+	"github.com/google/wire"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
@@ -17,7 +20,6 @@ import (
 	"github.com/nkonev/blog-storage/mongo_lock"
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
-	"go.uber.org/dig"
 	"net/http"
 	"os"
 	"os/signal"
@@ -148,9 +150,14 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 	}
 }
 
+func InitializeEcho() *echo.Echo {
+	panic(wire.Build(configureMongo, configureMinio, configureHandler, configureEcho /*configureMigrate, */, configureAuthMiddleware, client.NewRestClient))
+}
+
 func main() {
 	utils.InitViper("./config-dev/config.yml")
-	container := dig.New()
+
+	/*container := dig.New()
 	container.Provide(configureMongo)
 	container.Provide(configureMinio)
 	container.Provide(configureHandler)
@@ -158,11 +165,10 @@ func main() {
 	container.Provide(configureMigrate)
 	container.Provide(configureAuthMiddleware)
 	container.Provide(client.NewRestClient)
-	container.Invoke(runMigrate)
+	container.Invoke(runMigrate)*/
+	echoInstance := InitializeEcho()
+	runEcho(echoInstance)
 
-	if echoErr := container.Invoke(runEcho); echoErr != nil {
-		log.Fatalf("Error during invoke echo: %v", echoErr)
-	}
 	log.Infof("Exit program")
 }
 

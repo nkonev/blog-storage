@@ -51,3 +51,12 @@ mkdir -p /var/tmp/blog-storage
 mkdir -p /mnt/minio/data
 docker stack deploy --compose-file /path/to/docker-compose.yml BLOGSTORAGESTACK
 ```
+
+# wire
+manually run in terminal
+```
+wire
+go build
+```
+
+next set `Run kind`: `Directory` in go run configuration
