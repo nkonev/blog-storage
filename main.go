@@ -179,7 +179,7 @@ func configureHandler(minio *minio.Client, mongo *mongo.Client) *handlers.FsHand
 }
 
 func configureMigrate() *migrate.Migrate {
-	box := rice.MustFindBox("migrations")
+	box := rice.MustFindBox("data/migrations")
 
 	driver, err := migrate_rice.WithInstance(box)
 	if err != nil {
