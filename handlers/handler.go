@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/minio/minio-go"
+	"github.com/nkonev/blog-storage/data/repository"
 	. "github.com/nkonev/blog-storage/logger"
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
@@ -26,7 +27,11 @@ type FsHandler struct {
 	mongo     *mongo.Client
 }
 
-type FileInfo struct {
+type RenameDto struct {
+	Newname string `json:"newname"`
+}
+
+type FileInfoDto struct {
 	Id        string `json:"id"`
 	Filename  string `json:"filename"`
 	Url       string `json:"url"`
@@ -34,120 +39,12 @@ type FileInfo struct {
 	Size      int64  `json:"size"`
 }
 
-// https://vkt.sh/go-mongodb-driver-cookbook/
-type FileMongoDto struct {
-	Id        primitive.ObjectID `bson:"_id"` // mongo document id equal to minio object jd
-	Filename  string
-	Published bool
-}
-
-type renameDto struct {
-	Newname string `json:"newname"`
-}
-
-type GlobalIdDoc struct {
-	UserId int64
-}
-
-func fromUserId(userId int) *GlobalIdDoc {
-	return &GlobalIdDoc{UserId: int64(userId)}
-}
-
-const id = "_id"
-const filename = "filename"
 const published = "published"
 const FormFile = "file"
 const collectionLimits = "limits"
-const collectionGlobalObjects = "global_objects"
 
 func NewFsHandler(minio *minio.Client, serverUrl string, client *mongo.Client) *FsHandler {
 	return &FsHandler{minio: minio, serverUrl: serverUrl, mongo: client}
-}
-
-func toFileMongoDto(c *mongo.Cursor) (*FileMongoDto, error) {
-	var elem FileMongoDto
-	err := c.Decode(&elem)
-	if err != nil {
-		return nil, err
-	}
-
-	return &elem, nil
-}
-
-func getIdDoc(objectId string) (bson.D, error) {
-	ids, e := primitive.ObjectIDFromHex(objectId)
-	if e != nil {
-		return nil, e
-	}
-	ds := bson.D{{id, ids}}
-	return ds, nil
-}
-
-func getUpdateDoc(p bson.M) bson.M {
-	update := bson.M{"$set": p}
-	return update
-}
-
-func (h *FsHandler) getMetainfoFromMongo(objectId string, userId int) (*FileMongoDto, error) {
-	userFilesCollection := h.getUserCollectionInt(userId)
-	ds, err := getIdDoc(objectId)
-	if err != nil {
-		Logger.Errorf("Error during creating id document %v", objectId)
-		return nil, err
-	}
-
-	one := userFilesCollection.FindOne(context.TODO(), ds)
-	if one == nil {
-		return nil, errors.New("Unexpected nil by id " + objectId)
-	}
-	if one.Err() != nil {
-		Logger.Errorf("Error during querying record from mongo by key %v", objectId)
-		return nil, one.Err()
-	}
-
-	var elem FileMongoDto
-	if err := one.Decode(&elem); err != nil {
-		if err == mongo.ErrNoDocuments {
-			Logger.Errorf("No documents found by key %v", objectId)
-		}
-		return nil, err
-	}
-	return &elem, nil
-}
-
-func (h *FsHandler) getNextGlobalId(userIdV int) (*string, error) {
-	database := utils.GetMongoDatabase(h.mongo)
-	globalIdDoc := fromUserId(userIdV)
-	result, e := database.Collection(collectionGlobalObjects).InsertOne(context.TODO(), globalIdDoc)
-	if e != nil {
-		return nil, e
-	}
-	idMongo := result.InsertedID.(primitive.ObjectID).Hex()
-	return &idMongo, nil
-}
-
-func (h *FsHandler) getUserIdByGlobalId(objectId string) (int, error) {
-	ids, e := primitive.ObjectIDFromHex(objectId)
-	if e != nil {
-		return 0, e
-	}
-	database := utils.GetMongoDatabase(h.mongo)
-
-	ms := bson.M{id: ids}
-	one := database.Collection(collectionGlobalObjects).FindOne(context.TODO(), ms)
-	if one.Err() != nil {
-		if one.Err() != mongo.ErrNoDocuments {
-			Logger.Errorf("Error during get user id by global id %v", objectId)
-		} else {
-			Logger.Infof("No documents found by global id %v", objectId)
-		}
-		return 0, one.Err()
-	}
-	var elem GlobalIdDoc
-	if err := one.Decode(&elem); err != nil {
-		return 0, err
-	}
-	return int(elem.UserId), nil
 }
 
 func (h *FsHandler) getPrivateUrlFromObject(objInfo minio.ObjectInfo) (*string, error) {
@@ -175,9 +72,9 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 	}
 	defer userFilesCursor.Close(context.TODO())
 
-	var list []FileInfo = make([]FileInfo, 0)
+	var list []FileInfoDto = make([]FileInfoDto, 0)
 	for userFilesCursor.Next(context.TODO()) {
-		mongoDto, err := toFileMongoDto(userFilesCursor)
+		mongoDto, err := repository.ToFileMongoDto(userFilesCursor)
 		if err != nil {
 			Logger.Errorf("Error during get mongo dto: %v", err)
 			return err
@@ -206,7 +103,7 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 			return err
 		}
 
-		info := FileInfo{Id: mongoDto.Id.Hex(), Filename: mongoDto.Filename, Url: *downloadUrl, Size: objInfo.Size, PublicUrl: publicUrl}
+		info := FileInfoDto{Id: mongoDto.Id.Hex(), Filename: mongoDto.Filename, Url: *downloadUrl, Size: objInfo.Size, PublicUrl: publicUrl}
 		list = append(list, info)
 	}
 
@@ -215,7 +112,7 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 
 func (h *FsHandler) insertMetaInfoToMongo(c echo.Context, filename string, userId int) (*string, error) {
 
-	globalId, err := h.getNextGlobalId(userId)
+	globalId, err := repository.GetNextGlobalId(h.mongo, userId)
 	if err != nil {
 		Logger.Errorf("Error during create mongo global id document: %v", err)
 		return nil, err
@@ -226,7 +123,7 @@ func (h *FsHandler) insertMetaInfoToMongo(c echo.Context, filename string, userI
 		return nil, err
 	}
 
-	inserted, err := h.getUserCollection(c).InsertOne(context.TODO(), FileMongoDto{Id: ids, Filename: filename, Published: false})
+	inserted, err := h.getUserCollection(c).InsertOne(context.TODO(), repository.UserFileDto{Id: ids, Filename: filename, Published: false})
 	if err != nil {
 		Logger.Errorf("Error during create mongo metadata document: %v", err)
 		return nil, err
@@ -305,7 +202,7 @@ func (h *FsHandler) getUserCollection(c echo.Context) *mongo.Collection {
 	return database.Collection(bucketName)
 }
 
-func (h *FsHandler) getUserCollectionInt(userId int) *mongo.Collection {
+func (h *FsHandler) GetUserCollectionInt(userId int) *mongo.Collection {
 	database := utils.GetMongoDatabase(h.mongo)
 	bucketName := getBucketNameInt(userId)
 	return database.Collection(bucketName)
@@ -356,7 +253,7 @@ func (h *FsHandler) ensureBucket(bucketName, location string) {
 
 }
 
-func (h *FsHandler) download(bucketName, objId string, userId int) func(c echo.Context) error {
+func (h *FsHandler) download(bucketName, objId string, mongoDto *repository.UserFileDto) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		info, e := h.minio.StatObject(bucketName, objId, minio.StatObjectOptions{})
 		if e != nil {
@@ -365,10 +262,6 @@ func (h *FsHandler) download(bucketName, objId string, userId int) func(c echo.C
 
 		c.Response().Header().Set(echo.HeaderContentLength, strconv.FormatInt(info.Size, 10))
 		c.Response().Header().Set(echo.HeaderContentType, info.ContentType)
-		mongoDto, err := h.getMetainfoFromMongo(objId, userId)
-		if err != nil {
-			return err
-		}
 		c.Response().Header().Set(echo.HeaderContentDisposition, "attachment; Filename=\""+mongoDto.Filename+"\"")
 
 		object, e := h.minio.GetObject(bucketName, objId, minio.GetObjectOptions{})
@@ -384,34 +277,43 @@ func (h *FsHandler) download(bucketName, objId string, userId int) func(c echo.C
 func (h *FsHandler) DownloadHandler(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
 
-	objName := getFileId(c)
-	i, e := getUserIdFromRequest(c)
+	objId := getFileId(c)
+	userId, e := getUserIdFromRequest(c)
 	if e != nil {
 		return e
 	}
 
-	return h.download(bucketName, objName, i)(c)
+	dto, err := repository.GetMetainfoFromMongo(objId, h.GetUserCollectionInt(userId))
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
+		}
+		return err
+	}
+
+	return h.download(bucketName, objId, dto)(c)
 }
 
 func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
 
 	objId := getFileId(c)
 
-	userId, err := h.getUserIdByGlobalId(objId)
+	userId, err := repository.GetUserIdByGlobalId(h.mongo, objId)
 
-	dto, err := h.getMetainfoFromMongo(objId, userId)
-
+	dto, err := repository.GetMetainfoFromMongo(objId, h.GetUserCollectionInt(userId))
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
+		}
 		return err
 	}
-
-	if err == mongo.ErrNoDocuments || !dto.Published {
+	if !dto.Published {
 		return c.JSON(http.StatusNotFound, &utils.H{"status": "access fail"})
 	}
 
 	bucketName := getBucketNameInt(userId)
 
-	return h.download(bucketName, objId, userId)(c)
+	return h.download(bucketName, objId, dto)(c)
 }
 
 func getFileId(context echo.Context) string {
@@ -420,17 +322,18 @@ func getFileId(context echo.Context) string {
 
 func (h *FsHandler) MoveHandler(c echo.Context) error {
 	from := getFileId(c)
-	u := &renameDto{}
+
+	u := &RenameDto{}
 	if err := c.Bind(u); err != nil {
 		return err
 	}
 
 	userFilesCollection := h.getUserCollection(c)
-	findDocument, err := getIdDoc(from)
+	/*findDocument, err := repository.GetIdDoc(from)
 	if err != nil {
 		return err
 	}
-	updateDocument := getUpdateDoc(primitive.M{filename: u.Newname})
+	updateDocument := repository.GetUpdateDoc(primitive.M{filename: u.Newname})
 
 	one := userFilesCollection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
 	if one == nil {
@@ -438,6 +341,10 @@ func (h *FsHandler) MoveHandler(c echo.Context) error {
 	}
 	if one.Err() != nil {
 		return one.Err()
+	}*/
+
+	if err := repository.RenameUserFile(from, u.Newname, userFilesCollection); err != nil {
+		return err
 	}
 
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok"})
@@ -453,7 +360,7 @@ func (h *FsHandler) DeleteHandler(c echo.Context) error {
 	}
 
 	userFilesCollection := h.getUserCollection(c)
-	findDocument, err := getIdDoc(objId)
+	findDocument, err := repository.GetIdDoc(objId)
 	if err != nil {
 		return err
 	}
@@ -512,12 +419,12 @@ func (h *FsHandler) Publish(c echo.Context) error {
 	}
 
 	collection := h.getUserCollection(c)
-	findDocument, err := getIdDoc(objId)
+	findDocument, err := repository.GetIdDoc(objId)
 	if err != nil {
 		return err
 	}
 
-	updateDocument := getUpdateDoc(primitive.M{published: true})
+	updateDocument := repository.GetUpdateDoc(primitive.M{published: true})
 
 	one := collection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
 	if one == nil {
@@ -526,7 +433,7 @@ func (h *FsHandler) Publish(c echo.Context) error {
 	if one.Err() != nil {
 		return one.Err()
 	}
-	var elem FileMongoDto
+	var elem repository.UserFileDto
 	if err := one.Decode(&elem); err != nil {
 		return err
 	}
@@ -563,11 +470,11 @@ func (h *FsHandler) DeletePublish(c echo.Context) error {
 	objId := getFileId(c)
 
 	collection := h.getUserCollection(c)
-	findDocument, err := getIdDoc(objId)
+	findDocument, err := repository.GetIdDoc(objId)
 	if err != nil {
 		return err
 	}
-	updateDocument := getUpdateDoc(primitive.M{published: false})
+	updateDocument := repository.GetUpdateDoc(primitive.M{published: false})
 
 	one := collection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
 	if one == nil {
@@ -581,7 +488,7 @@ func (h *FsHandler) DeletePublish(c echo.Context) error {
 }
 
 func (h *FsHandler) getMaxAllowedConsumption(userId int) (int64, error) {
-	b, e := h.isDocumentExists(collectionLimits, bson.D{{id, userId}})
+	b, e := h.isDocumentExists(collectionLimits, bson.D{{repository.Id, userId}})
 	if e != nil {
 		return 0, e
 	}
