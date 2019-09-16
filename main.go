@@ -54,10 +54,18 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc, 
 	static := rice.MustFindBox("static").HTTPBox()
 
 	e := echo.New()
+	e.Logger.SetOutput(Logger.Writer())
 
 	e.Use(authMiddleware)
 
-	e.Use(middleware.Logger())
+	config := middleware.LoggerConfig{
+		Output: Logger.Writer(),
+		Format: `"remote_ip":"${remote_ip}",` +
+			`"method":"${method}","uri":"${uri}",` +
+			`"status":${status},"error":"${error}","latency_human":"${latency_human}"` +
+			`,"bytes_in":${bytes_in},"bytes_out":${bytes_out},"user_agent":"${user_agent}"` + "\n",
+	}
+	e.Use(middleware.LoggerWithConfig(config))
 	e.Use(middleware.Secure())
 	e.Use(middleware.BodyLimit(bodyLimit))
 
