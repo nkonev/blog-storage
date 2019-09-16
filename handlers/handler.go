@@ -26,6 +26,7 @@ type FsHandler struct {
 	mongo              *mongo.Client
 	userFileRepository *repository.UserFileRepository
 	glogalIdRepository *repository.GlogalIdRepository
+	limitsRepository *repository.LimitsRepository
 }
 
 type RenameDto struct {
@@ -41,11 +42,21 @@ type FileInfoDto struct {
 }
 
 const FormFile = "file"
-const collectionLimits = "limits"
 
-func NewFsHandler(minio *minio.Client, client *mongo.Client,
-	userFileRepository *repository.UserFileRepository, glogalIdRepository *repository.GlogalIdRepository) *FsHandler {
-	return &FsHandler{minio: minio, serverUrl: viper.GetString("server.url"), mongo: client, userFileRepository: userFileRepository, glogalIdRepository: glogalIdRepository}
+func NewFsHandler(
+	minio *minio.Client,
+	client *mongo.Client,
+	userFileRepository *repository.UserFileRepository,
+	glogalIdRepository *repository.GlogalIdRepository,
+	limitsRepository *repository.LimitsRepository,
+) *FsHandler {
+	return &FsHandler{
+		minio: minio,
+		serverUrl: viper.GetString("server.url"),
+		mongo: client,
+		userFileRepository: userFileRepository,
+		glogalIdRepository: glogalIdRepository,
+		limitsRepository: limitsRepository}
 }
 
 func (h *FsHandler) getPrivateUrlFromObject(objInfo minio.ObjectInfo) (*string, error) {
@@ -59,7 +70,11 @@ func (h *FsHandler) getPrivateUrlFromObject(objInfo minio.ObjectInfo) (*string, 
 }
 
 func (h *FsHandler) LsHandler(c echo.Context) error {
-	Logger.Debugf("Get userId: %v; userLogin: %v", c.Get(utils.USER_ID), c.Get(utils.USER_LOGIN))
+	userId, b := getUserIdFromContext(c)
+	if !b {
+		return errors.New("Cannot get userId from context")
+	}
+	Logger.Debugf("Get userId: %v; userLogin: %v", userId, c.Get(utils.USER_LOGIN))
 
 	bucket := h.ensureAndGetBucket(c)
 
@@ -135,7 +150,7 @@ func (h *FsHandler) insertMetaInfoToMongo(c echo.Context, filename string, userI
 
 func (h *FsHandler) checkUserLimit(bucketName string, c echo.Context, file *multipart.FileHeader) (bool, error) {
 	consumption := h.calcUserFilesConsumption(bucketName)
-	userId, ok := c.Get(utils.USER_ID).(int)
+	userId, ok := getUserIdFromContext(c)
 	if !ok {
 		return false, errors.New("Error during get(cast) userId")
 	}
@@ -149,6 +164,11 @@ func (h *FsHandler) checkUserLimit(bucketName string, c echo.Context, file *mult
 		return false, nil
 	}
 	return true, nil
+}
+
+func getUserIdFromContext(c echo.Context) (int, bool) {
+	userId, ok :=  c.Get(utils.USER_ID).(int)
+	return userId, ok;
 }
 
 func (h *FsHandler) UploadHandler(c echo.Context) error {
@@ -215,7 +235,7 @@ func getBucketName(c echo.Context) string {
 }
 
 func getUserIdFromRequest(c echo.Context) (int, error) {
-	i, ok := c.Get(utils.USER_ID).(int)
+	i, ok := getUserIdFromContext(c)
 	if !ok {
 		Logger.Errorf("Error during get(cast) userId")
 		return 0, errors.New("Error during get(cast) userId")
@@ -364,7 +384,7 @@ func (h *FsHandler) DeleteHandler(c echo.Context) error {
 func (h *FsHandler) Limits(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
 
-	userId, ok := c.Get(utils.USER_ID).(int)
+	userId, ok := getUserIdFromContext(c)
 	if !ok {
 		Logger.Errorf("Error during get(cast) userId")
 	}
@@ -426,7 +446,7 @@ func (h *FsHandler) DeletePublish(c echo.Context) error {
 }
 
 func (h *FsHandler) getMaxAllowedConsumption(userId int) (int64, error) {
-	b, e := repository.IsDocumentExists(h.mongo, collectionLimits, bson.D{{repository.Id, userId}})
+	b, e := h.limitsRepository.IsStorageUnlimitedForUser(userId)
 	if e != nil {
 		return 0, e
 	}

@@ -38,6 +38,7 @@ func main() {
 			configureMinio,
 			repository.NewUserFileRepository,
 			repository.NewGlogalIdRepository,
+			repository.NewLimitsRepository,
 			handlers.NewFsHandler,
 			configureEcho,
 			configureMigrate,

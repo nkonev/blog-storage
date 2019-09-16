@@ -132,6 +132,7 @@ func setUpContainerForIntegrationTests(additional ...interface{}) fx.Option {
 	arr = append(arr, configureMongo, configureMinio,
 		repository.NewUserFileRepository,
 		repository.NewGlogalIdRepository,
+		repository.NewLimitsRepository,
 		handlers.NewFsHandler, configureEcho, configureMigrate, configureAuthMiddleware)
 	arr = append(arr, additional...)
 	return fx.Provide(arr...)

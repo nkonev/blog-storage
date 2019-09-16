@@ -16,6 +16,7 @@ const Id = "_id"
 const filename = "filename"
 const published = "published"
 
+const collectionLimits = "limits"
 const collectionGlobalObjects = "global_objects"
 
 // https://vkt.sh/go-mongodb-driver-cookbook/
@@ -44,6 +45,15 @@ type GlogalIdRepository struct {
 func NewGlogalIdRepository(mongo *mongo.Client) *GlogalIdRepository {
 	return &GlogalIdRepository{mongo: mongo}
 }
+
+type LimitsRepository  struct {
+	mongo *mongo.Client
+}
+
+func NewLimitsRepository(mongo *mongo.Client) *LimitsRepository {
+	return &LimitsRepository{mongo: mongo}
+}
+
 
 func NewGlogalIdDoc(userId int) *GlobalIdDoc {
 	return &GlobalIdDoc{UserId: int64(userId)}
@@ -156,7 +166,7 @@ func (r *UserFileRepository) RenameUserFile(objId string, newname string, userBu
 	return nil
 }
 
-func (r *UserFileRepository) UpdatePublished(userBucketName string, objId string, sevValPublished bool) (*UserFileDto, error) {
+func (r *UserFileRepository) UpdatePublished(userBucketName string, objId string, setValPublished bool) (*UserFileDto, error) {
 	database := utils.GetMongoDatabase(r.mongo)
 	var collection *mongo.Collection = database.Collection(userBucketName)
 
@@ -165,7 +175,7 @@ func (r *UserFileRepository) UpdatePublished(userBucketName string, objId string
 		return nil, err
 	}
 
-	updateDocument := GetUpdateDoc(primitive.M{published: sevValPublished})
+	updateDocument := GetUpdateDoc(primitive.M{published: setValPublished})
 
 	one := collection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
 	if one == nil {
@@ -202,4 +212,8 @@ func IsDocumentExists(mongoC *mongo.Client, collection string, request interface
 	} else {
 		return true, nil
 	}
+}
+
+func (r *LimitsRepository) IsStorageUnlimitedForUser(userId int) (bool, error) {
+	return IsDocumentExists(r.mongo, collectionLimits, bson.D{{Id, userId}})
 }
