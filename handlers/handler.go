@@ -13,7 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -22,9 +21,11 @@ import (
 )
 
 type FsHandler struct {
-	serverUrl string
-	minio     *minio.Client
-	mongo     *mongo.Client
+	serverUrl          string
+	minio              *minio.Client
+	mongo              *mongo.Client
+	userFileRepository *repository.UserFileRepository
+	glogalIdRepository *repository.GlogalIdRepository
 }
 
 type RenameDto struct {
@@ -39,12 +40,12 @@ type FileInfoDto struct {
 	Size      int64  `json:"size"`
 }
 
-const published = "published"
 const FormFile = "file"
 const collectionLimits = "limits"
 
-func NewFsHandler(minio *minio.Client, serverUrl string, client *mongo.Client) *FsHandler {
-	return &FsHandler{minio: minio, serverUrl: serverUrl, mongo: client}
+func NewFsHandler(minio *minio.Client, client *mongo.Client,
+	userFileRepository *repository.UserFileRepository, glogalIdRepository *repository.GlogalIdRepository) *FsHandler {
+	return &FsHandler{minio: minio, serverUrl: viper.GetString("server.url"), mongo: client, userFileRepository: userFileRepository, glogalIdRepository: glogalIdRepository}
 }
 
 func (h *FsHandler) getPrivateUrlFromObject(objInfo minio.ObjectInfo) (*string, error) {
@@ -112,7 +113,7 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 
 func (h *FsHandler) insertMetaInfoToMongo(c echo.Context, filename string, userId int) (*string, error) {
 
-	globalId, err := repository.GetNextGlobalId(h.mongo, userId)
+	globalId, err := h.glogalIdRepository.GetNextGlobalId(userId)
 	if err != nil {
 		Logger.Errorf("Error during create mongo global id document: %v", err)
 		return nil, err
@@ -283,7 +284,7 @@ func (h *FsHandler) DownloadHandler(c echo.Context) error {
 		return e
 	}
 
-	dto, err := repository.GetMetainfoFromMongo(objId, h.GetUserCollectionInt(userId))
+	dto, err := h.userFileRepository.GetMetainfoFromMongo(objId, getBucketNameInt(userId))
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
@@ -298,9 +299,9 @@ func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
 
 	objId := getFileId(c)
 
-	userId, err := repository.GetUserIdByGlobalId(h.mongo, objId)
+	userId, err := h.glogalIdRepository.GetUserIdByGlobalId(objId)
 
-	dto, err := repository.GetMetainfoFromMongo(objId, h.GetUserCollectionInt(userId))
+	dto, err := h.userFileRepository.GetMetainfoFromMongo(objId, getBucketNameInt(userId))
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
@@ -328,22 +329,9 @@ func (h *FsHandler) MoveHandler(c echo.Context) error {
 		return err
 	}
 
-	userFilesCollection := h.getUserCollection(c)
-	/*findDocument, err := repository.GetIdDoc(from)
-	if err != nil {
-		return err
-	}
-	updateDocument := repository.GetUpdateDoc(primitive.M{filename: u.Newname})
+	bucketName := getBucketName(c)
 
-	one := userFilesCollection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
-	if one == nil {
-		return errors.New("Unexpected nil result during update")
-	}
-	if one.Err() != nil {
-		return one.Err()
-	}*/
-
-	if err := repository.RenameUserFile(from, u.Newname, userFilesCollection); err != nil {
+	if err := h.userFileRepository.RenameUserFile(from, u.Newname, bucketName); err != nil {
 		return err
 	}
 
@@ -418,77 +406,27 @@ func (h *FsHandler) Publish(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
 	}
 
-	collection := h.getUserCollection(c)
-	findDocument, err := repository.GetIdDoc(objId)
+	elem, err := h.userFileRepository.UpdatePublished(getBucketName(c), objId, true)
 	if err != nil {
 		return err
 	}
 
-	updateDocument := repository.GetUpdateDoc(primitive.M{published: true})
-
-	one := collection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
-	if one == nil {
-		return errors.New("Unexpected nil result during update")
-	}
-	if one.Err() != nil {
-		return one.Err()
-	}
-	var elem repository.UserFileDto
-	if err := one.Decode(&elem); err != nil {
-		return err
-	}
-	dto := elem
-
-	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "Published": true, "url": h.getPublicUrl(getBucketName(c), dto.Id.Hex())})
-}
-
-func (h *FsHandler) isDocumentExists(collection string, request interface{}, opts ...*options.FindOneOptions) (bool, error) {
-	database := utils.GetMongoDatabase(h.mongo)
-
-	// https://siongui.github.io/2017/03/13/go-pass-slice-or-array-as-variadic-parameter/#id12
-	res := database.Collection(collection).FindOne(context.TODO(), request, opts[:]...)
-	if res.Err() != nil {
-		if res.Err() == mongo.ErrNoDocuments {
-			return false, nil
-		}
-		Logger.Errorf("Error during find '%v' : %v", request, res.Err())
-		return false, res.Err()
-	}
-
-	_, e := res.DecodeBytes()
-
-	if e != nil {
-		Logger.Errorf("Error during DecodeBytes '%v' : %v", request, res.Err())
-		return false, e
-	} else {
-		return true, nil
-	}
-
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "Published": true, "url": h.getPublicUrl(getBucketName(c), elem.Id.Hex())})
 }
 
 func (h *FsHandler) DeletePublish(c echo.Context) error {
 	objId := getFileId(c)
 
-	collection := h.getUserCollection(c)
-	findDocument, err := repository.GetIdDoc(objId)
+	_, err := h.userFileRepository.UpdatePublished(getBucketName(c), objId, false)
 	if err != nil {
 		return err
-	}
-	updateDocument := repository.GetUpdateDoc(primitive.M{published: false})
-
-	one := collection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
-	if one == nil {
-		return errors.New("Unexpected nil result during update")
-	}
-	if one.Err() != nil {
-		return one.Err()
 	}
 
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "unpublished": true})
 }
 
 func (h *FsHandler) getMaxAllowedConsumption(userId int) (int64, error) {
-	b, e := h.isDocumentExists(collectionLimits, bson.D{{repository.Id, userId}})
+	b, e := repository.IsDocumentExists(h.mongo, collectionLimits, bson.D{{repository.Id, userId}})
 	if e != nil {
 		return 0, e
 	}

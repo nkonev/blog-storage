@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/labstack/echo/v4"
 	"github.com/nkonev/blog-storage/client"
+	"github.com/nkonev/blog-storage/data/repository"
 	"github.com/nkonev/blog-storage/handlers"
 	. "github.com/nkonev/blog-storage/logger"
 	"github.com/nkonev/blog-storage/utils"
@@ -128,7 +129,10 @@ func runEcho2(test func(e *echo.Echo)) func(e *echo.Echo) {
 
 func setUpContainerForIntegrationTests(additional ...interface{}) fx.Option {
 	var arr []interface{}
-	arr = append(arr, configureMongo, configureMinio, configureHandler, configureEcho, configureMigrate, configureAuthMiddleware)
+	arr = append(arr, configureMongo, configureMinio,
+		repository.NewUserFileRepository,
+		repository.NewGlogalIdRepository,
+		handlers.NewFsHandler, configureEcho, configureMigrate, configureAuthMiddleware)
 	arr = append(arr, additional...)
 	return fx.Provide(arr...)
 

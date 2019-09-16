@@ -12,6 +12,7 @@ import (
 	"github.com/nkonev/blog-storage/client"
 	"github.com/nkonev/blog-storage/data/migrate_rice"
 	"github.com/nkonev/blog-storage/data/mongo_lock"
+	"github.com/nkonev/blog-storage/data/repository"
 	"github.com/nkonev/blog-storage/handlers"
 	. "github.com/nkonev/blog-storage/logger"
 	"github.com/nkonev/blog-storage/utils"
@@ -35,7 +36,9 @@ func main() {
 		fx.Provide(
 			configureMongo,
 			configureMinio,
-			configureHandler,
+			repository.NewUserFileRepository,
+			repository.NewGlogalIdRepository,
+			handlers.NewFsHandler,
 			configureEcho,
 			configureMigrate,
 			configureAuthMiddleware,
@@ -180,10 +183,6 @@ func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
 
 		}
 	}
-}
-
-func configureHandler(minio *minio.Client, mongo *mongo.Client) *handlers.FsHandler {
-	return handlers.NewFsHandler(minio, viper.GetString("server.url"), mongo)
 }
 
 func configureMigrate() *migrate.Migrate {
