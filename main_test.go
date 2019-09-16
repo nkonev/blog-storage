@@ -130,8 +130,8 @@ func runEcho2(test func(e *echo.Echo)) func(e *echo.Echo) {
 func setUpContainerForIntegrationTests(additional ...interface{}) fx.Option {
 	var arr []interface{}
 	arr = append(arr, configureMongo, configureMinio,
-		repository.NewUserFileRepository,
 		repository.NewGlogalIdRepository,
+		repository.NewUserFileRepository,
 		repository.NewLimitsRepository,
 		handlers.NewFsHandler, configureEcho, configureMigrate, configureAuthMiddleware)
 	arr = append(arr, additional...)

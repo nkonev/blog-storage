@@ -11,7 +11,6 @@ import (
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"mime/multipart"
 	"net/http"
@@ -25,8 +24,8 @@ type FsHandler struct {
 	minio              *minio.Client
 	mongo              *mongo.Client
 	userFileRepository *repository.UserFileRepository
-	glogalIdRepository *repository.GlogalIdRepository
-	limitsRepository *repository.LimitsRepository
+	globalIdRepository *repository.GlogalIdRepository
+	limitsRepository   *repository.LimitsRepository
 }
 
 type RenameDto struct {
@@ -51,12 +50,12 @@ func NewFsHandler(
 	limitsRepository *repository.LimitsRepository,
 ) *FsHandler {
 	return &FsHandler{
-		minio: minio,
-		serverUrl: viper.GetString("server.url"),
-		mongo: client,
+		minio:              minio,
+		serverUrl:          viper.GetString("server.url"),
+		mongo:              client,
 		userFileRepository: userFileRepository,
-		glogalIdRepository: glogalIdRepository,
-		limitsRepository: limitsRepository}
+		globalIdRepository: glogalIdRepository,
+		limitsRepository:   limitsRepository}
 }
 
 func (h *FsHandler) getPrivateUrlFromObject(objInfo minio.ObjectInfo) (*string, error) {
@@ -126,28 +125,6 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "files": list})
 }
 
-func (h *FsHandler) insertMetaInfoToMongo(c echo.Context, filename string, userId int) (*string, error) {
-
-	globalId, err := h.glogalIdRepository.GetNextGlobalId(userId)
-	if err != nil {
-		Logger.Errorf("Error during create mongo global id document: %v", err)
-		return nil, err
-	}
-	ids, err := primitive.ObjectIDFromHex(*globalId)
-	if err != nil {
-		Logger.Errorf("Error during convert id: %v", err)
-		return nil, err
-	}
-
-	inserted, err := h.getUserCollection(c).InsertOne(context.TODO(), repository.UserFileDto{Id: ids, Filename: filename, Published: false})
-	if err != nil {
-		Logger.Errorf("Error during create mongo metadata document: %v", err)
-		return nil, err
-	}
-	idMongo := inserted.InsertedID.(primitive.ObjectID).Hex()
-	return &idMongo, nil
-}
-
 func (h *FsHandler) checkUserLimit(bucketName string, c echo.Context, file *multipart.FileHeader) (bool, error) {
 	consumption := h.calcUserFilesConsumption(bucketName)
 	userId, ok := getUserIdFromContext(c)
@@ -167,8 +144,8 @@ func (h *FsHandler) checkUserLimit(bucketName string, c echo.Context, file *mult
 }
 
 func getUserIdFromContext(c echo.Context) (int, bool) {
-	userId, ok :=  c.Get(utils.USER_ID).(int)
-	return userId, ok;
+	userId, ok := c.Get(utils.USER_ID).(int)
+	return userId, ok
 }
 
 func (h *FsHandler) UploadHandler(c echo.Context) error {
@@ -204,7 +181,7 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	mongoId, err := h.insertMetaInfoToMongo(c, file.Filename, i)
+	mongoId, err := h.userFileRepository.InsertMetaInfoToMongo(getBucketName(c), file.Filename, i)
 	if err != nil {
 		return err
 	}
@@ -319,7 +296,7 @@ func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
 
 	objId := getFileId(c)
 
-	userId, err := h.glogalIdRepository.GetUserIdByGlobalId(objId)
+	userId, err := h.globalIdRepository.GetUserIdByGlobalId(objId)
 
 	dto, err := h.userFileRepository.GetMetainfoFromMongo(objId, getBucketNameInt(userId))
 	if err != nil {

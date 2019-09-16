@@ -36,8 +36,8 @@ func main() {
 		fx.Provide(
 			configureMongo,
 			configureMinio,
-			repository.NewUserFileRepository,
 			repository.NewGlogalIdRepository,
+			repository.NewUserFileRepository,
 			repository.NewLimitsRepository,
 			handlers.NewFsHandler,
 			configureEcho,

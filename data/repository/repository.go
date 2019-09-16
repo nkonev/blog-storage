@@ -31,11 +31,12 @@ type GlobalIdDoc struct {
 }
 
 type UserFileRepository struct {
-	mongo *mongo.Client
+	mongo              *mongo.Client
+	globalIdRepository *GlogalIdRepository
 }
 
-func NewUserFileRepository(mongo *mongo.Client) *UserFileRepository {
-	return &UserFileRepository{mongo: mongo}
+func NewUserFileRepository(mongo *mongo.Client, globalIdRepository *GlogalIdRepository) *UserFileRepository {
+	return &UserFileRepository{mongo: mongo, globalIdRepository: globalIdRepository}
 }
 
 type GlogalIdRepository struct {
@@ -46,14 +47,13 @@ func NewGlogalIdRepository(mongo *mongo.Client) *GlogalIdRepository {
 	return &GlogalIdRepository{mongo: mongo}
 }
 
-type LimitsRepository  struct {
+type LimitsRepository struct {
 	mongo *mongo.Client
 }
 
 func NewLimitsRepository(mongo *mongo.Client) *LimitsRepository {
 	return &LimitsRepository{mongo: mongo}
 }
-
 
 func NewGlogalIdDoc(userId int) *GlobalIdDoc {
 	return &GlobalIdDoc{UserId: int64(userId)}
@@ -115,6 +115,29 @@ func (r *GlogalIdRepository) GetUserIdByGlobalId(objectId string) (int, error) {
 		return 0, err
 	}
 	return int(elem.UserId), nil
+}
+
+func (r *UserFileRepository) InsertMetaInfoToMongo(userBucketName string, filename string, userId int) (*string, error) {
+	database := utils.GetMongoDatabase(r.mongo)
+
+	globalId, err := r.globalIdRepository.GetNextGlobalId(userId)
+	if err != nil {
+		Logger.Errorf("Error during create mongo global id document: %v", err)
+		return nil, err
+	}
+	ids, err := primitive.ObjectIDFromHex(*globalId)
+	if err != nil {
+		Logger.Errorf("Error during convert id: %v", err)
+		return nil, err
+	}
+
+	inserted, err := database.Collection(userBucketName).InsertOne(context.TODO(), UserFileDto{Id: ids, Filename: filename, Published: false})
+	if err != nil {
+		Logger.Errorf("Error during create mongo metadata document: %v", err)
+		return nil, err
+	}
+	idMongo := inserted.InsertedID.(primitive.ObjectID).Hex()
+	return &idMongo, nil
 }
 
 func (r *UserFileRepository) GetMetainfoFromMongo(objectId string, userBucketName string) (*UserFileDto, error) {
