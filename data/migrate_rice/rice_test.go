@@ -19,7 +19,7 @@ func Test(t *testing.T) {
 }
 
 func TestOpen(t *testing.T) {
-	p := &Packr{}
+	p := &Rice{}
 	_, err := p.Open("")
 	if err == nil {
 		t.Fatal("expected err, because it's not implemented yet")

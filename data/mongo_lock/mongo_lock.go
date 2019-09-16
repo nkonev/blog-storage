@@ -65,7 +65,6 @@ func (ml *mongoLock) AcquireLock() {
 	var upsert = true
 	duration, _ := time.ParseDuration("1s")
 
-
 	for {
 		result, err := database.Collection(ml.lockCollection).UpdateOne(context.TODO(), ml.idDoc, getUpdateDoc(bson.M{"lastAcquired": time.Now()}), &options.UpdateOptions{Upsert: &upsert})
 		if err != nil {

@@ -13,26 +13,26 @@ import (
 const Name = "rice"
 
 func init() {
-	source.Register(Name, &Packr{})
+	source.Register(Name, &Rice{})
 }
 
-type Packr struct {
+type Rice struct {
 	migrations *source.Migrations
 	box        *rice.Box
 	path       string
 }
 
-func (b *Packr) Open(url string) (source.Driver, error) {
+func (b *Rice) Open(url string) (source.Driver, error) {
 	return nil, fmt.Errorf("not yet implemented, please use WithInstance")
 }
 
 func WithInstance(instance interface{}) (source.Driver, error) {
 	if _, ok := instance.(*rice.Box); !ok {
-		return nil, fmt.Errorf("expects *packr.Box")
+		return nil, fmt.Errorf("expects *rice.Box")
 	}
 	bx := instance.(*rice.Box)
 
-	driver := &Packr{
+	driver := &Rice{
 		box:        bx,
 		migrations: source.NewMigrations(),
 		path:       bx.Name(),
@@ -59,11 +59,11 @@ func WithInstance(instance interface{}) (source.Driver, error) {
 	return driver, nil
 }
 
-func (b *Packr) Close() error {
+func (b *Rice) Close() error {
 	return nil
 }
 
-func (b *Packr) First() (version uint, err error) {
+func (b *Rice) First() (version uint, err error) {
 	if v, ok := b.migrations.First(); !ok {
 		return 0, &os.PathError{"first", b.path, os.ErrNotExist}
 	} else {
@@ -71,7 +71,7 @@ func (b *Packr) First() (version uint, err error) {
 	}
 }
 
-func (b *Packr) Prev(version uint) (prevVersion uint, err error) {
+func (b *Rice) Prev(version uint) (prevVersion uint, err error) {
 	if v, ok := b.migrations.Prev(version); !ok {
 		return 0, &os.PathError{fmt.Sprintf("prev for version %v", version), b.path, os.ErrNotExist}
 	} else {
@@ -79,7 +79,7 @@ func (b *Packr) Prev(version uint) (prevVersion uint, err error) {
 	}
 }
 
-func (b *Packr) Next(version uint) (nextVersion uint, err error) {
+func (b *Rice) Next(version uint) (nextVersion uint, err error) {
 	if v, ok := b.migrations.Next(version); !ok {
 		return 0, &os.PathError{fmt.Sprintf("next for version %v", version), b.path, os.ErrNotExist}
 	} else {
@@ -87,7 +87,7 @@ func (b *Packr) Next(version uint) (nextVersion uint, err error) {
 	}
 }
 
-func (b *Packr) ReadUp(version uint) (r io.ReadCloser, identifier string, err error) {
+func (b *Rice) ReadUp(version uint) (r io.ReadCloser, identifier string, err error) {
 	if m, ok := b.migrations.Up(version); ok {
 		body := b.box.MustBytes(m.Raw)
 		return ioutil.NopCloser(bytes.NewReader(body)), m.Identifier, nil
@@ -95,7 +95,7 @@ func (b *Packr) ReadUp(version uint) (r io.ReadCloser, identifier string, err er
 	return nil, "", &os.PathError{fmt.Sprintf("read version %v", version), b.path, os.ErrNotExist}
 }
 
-func (b *Packr) ReadDown(version uint) (r io.ReadCloser, identifier string, err error) {
+func (b *Rice) ReadDown(version uint) (r io.ReadCloser, identifier string, err error) {
 	if m, ok := b.migrations.Down(version); ok {
 		body := b.box.MustBytes(m.Raw)
 		return ioutil.NopCloser(bytes.NewReader(body)), m.Identifier, nil
