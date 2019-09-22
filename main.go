@@ -65,14 +65,14 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, stati
 	e.Pre(echo.MiddlewareFunc(staticMiddleware))
 	e.Use(echo.MiddlewareFunc(authMiddleware))
 
-	loggerConfig := middleware.LoggerConfig{
+	accessLoggerConfig := middleware.LoggerConfig{
 		Output: Logger.Writer(),
 		Format: `"remote_ip":"${remote_ip}",` +
 			`"method":"${method}","uri":"${uri}",` +
 			`"status":${status},"error":"${error}","latency_human":"${latency_human}"` +
 			`,"bytes_in":${bytes_in},"bytes_out":${bytes_out},"user_agent":"${user_agent}"` + "\n",
 	}
-	e.Use(middleware.LoggerWithConfig(loggerConfig))
+	e.Use(middleware.LoggerWithConfig(accessLoggerConfig))
 	e.Use(middleware.Secure())
 	e.Use(middleware.BodyLimit(bodyLimit))
 
