@@ -78,6 +78,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, stati
 	e.Use(middleware.Secure())
 	e.Use(middleware.BodyLimit(bodyLimit))
 
+	// should be inserted AFTER access logging middleware, because it (re)set error to nil
 	e.Use(echo.MiddlewareFunc(transactionMiddleware))
 
 	e.GET("/ls", fsh.LsHandler)
