@@ -30,6 +30,7 @@ const LOCK_COLLECTION = "migration_lock"
 
 type authMiddleware echo.MiddlewareFunc
 type staticMiddleware echo.MiddlewareFunc
+type transactionMiddleware echo.MiddlewareFunc
 
 func main() {
 	utils.InitViper("./config-dev/config.yml")
@@ -47,6 +48,7 @@ func main() {
 			configureMigrate,
 			configureAuthMiddleware,
 			configureStaticMiddleware,
+			configureTransactionMiddleware,
 			client.NewRestClient,
 		),
 		fx.Invoke(runMigrate, runEcho),
@@ -56,7 +58,7 @@ func main() {
 	Logger.Infof("Exit program")
 }
 
-func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, staticMiddleware staticMiddleware, lc fx.Lifecycle) *echo.Echo {
+func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, staticMiddleware staticMiddleware, transactionMiddleware transactionMiddleware, lc fx.Lifecycle) *echo.Echo {
 	bodyLimit := viper.GetString("server.body.limit")
 
 	e := echo.New()
@@ -75,6 +77,8 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, stati
 	e.Use(middleware.LoggerWithConfig(accessLoggerConfig))
 	e.Use(middleware.Secure())
 	e.Use(middleware.BodyLimit(bodyLimit))
+
+	e.Use(echo.MiddlewareFunc(transactionMiddleware))
 
 	e.GET("/ls", fsh.LsHandler)
 	e.GET("/limits", fsh.Limits)
@@ -110,6 +114,26 @@ func configureStaticMiddleware() staticMiddleware {
 			} else {
 				return next(c)
 			}
+		}
+	}
+}
+
+func configureTransactionMiddleware(mongoC *mongo.Client) transactionMiddleware {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			return mongoC.UseSession(context.TODO(), func(sessionContext mongo.SessionContext) error {
+				_, e := sessionContext.WithTransaction(context.TODO(), func(sessCtx mongo.SessionContext) (i interface{}, e error) {
+					Logger.Debugf("Starting mongo transaction pseudoId=%v", sessCtx)
+					e2 := next(c)
+					if e2 != nil {
+						Logger.Errorf("Got error during processing middleware chain, mongo transaction will be reverted pseudoId=%v", sessCtx)
+					} else {
+						Logger.Debugf("Mongo transaction will be committed pseudoId=%v", sessCtx)
+					}
+					return nil, e2
+				})
+				return e
+			})
 		}
 	}
 }

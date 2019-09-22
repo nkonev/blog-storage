@@ -133,7 +133,8 @@ func setUpContainerForIntegrationTests(additional ...interface{}) fx.Option {
 		repository.NewGlogalIdRepository,
 		repository.NewUserFileRepository,
 		repository.NewLimitsRepository,
-		handlers.NewFsHandler, configureEcho, configureMigrate, configureAuthMiddleware, configureStaticMiddleware)
+		handlers.NewFsHandler, configureEcho, configureMigrate,
+		configureAuthMiddleware, configureStaticMiddleware, configureTransactionMiddleware)
 	arr = append(arr, additional...)
 	return fx.Provide(arr...)
 
