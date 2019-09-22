@@ -102,8 +102,8 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 		}
 		objInfo, err := obj.Stat()
 		if err != nil {
-			Logger.Errorf("Error during stat: %v", err)
-			return err
+			Logger.Infof("Cannot stat: %v. May be file by key %v still uploading. Skipping it.", err, mongoDto.Id.Hex())
+			continue
 		}
 		Logger.Debugf("Object '%v'", objInfo.Key)
 
