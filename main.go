@@ -62,6 +62,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, stati
 	e := echo.New()
 	e.Logger.SetOutput(Logger.Writer())
 
+	e.Pre(echo.MiddlewareFunc(staticMiddleware))
 	e.Use(echo.MiddlewareFunc(authMiddleware))
 
 	loggerConfig := middleware.LoggerConfig{
@@ -84,8 +85,6 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, stati
 	e.PUT("/publish/:file", fsh.Publish)
 	e.GET(utils.PUBLIC_PREFIX+"/"+utils.USER_PREFIX+":userId/:file", fsh.PublicDownloadHandler)
 	e.DELETE("/publish/:file", fsh.DeletePublish)
-
-	e.Pre(echo.MiddlewareFunc(staticMiddleware))
 
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
