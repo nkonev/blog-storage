@@ -28,6 +28,9 @@ const SESSION_COOKIE = "SESSION"
 const AUTH_URL = "auth.url"
 const LOCK_COLLECTION = "migration_lock"
 
+type authMiddleware echo.MiddlewareFunc
+type staticMiddleware echo.MiddlewareFunc
+
 func main() {
 	utils.InitViper("./config-dev/config.yml")
 
@@ -43,6 +46,7 @@ func main() {
 			configureEcho,
 			configureMigrate,
 			configureAuthMiddleware,
+			configureStaticMiddleware,
 			client.NewRestClient,
 		),
 		fx.Invoke(runMigrate, runEcho),
@@ -52,24 +56,22 @@ func main() {
 	Logger.Infof("Exit program")
 }
 
-func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc, lc fx.Lifecycle) *echo.Echo {
+func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, staticMiddleware staticMiddleware, lc fx.Lifecycle) *echo.Echo {
 	bodyLimit := viper.GetString("server.body.limit")
-
-	static := rice.MustFindBox("static").HTTPBox()
 
 	e := echo.New()
 	e.Logger.SetOutput(Logger.Writer())
 
-	e.Use(authMiddleware)
+	e.Use(echo.MiddlewareFunc(authMiddleware))
 
-	config := middleware.LoggerConfig{
+	loggerConfig := middleware.LoggerConfig{
 		Output: Logger.Writer(),
 		Format: `"remote_ip":"${remote_ip}",` +
 			`"method":"${method}","uri":"${uri}",` +
 			`"status":${status},"error":"${error}","latency_human":"${latency_human}"` +
 			`,"bytes_in":${bytes_in},"bytes_out":${bytes_out},"user_agent":"${user_agent}"` + "\n",
 	}
-	e.Use(middleware.LoggerWithConfig(config))
+	e.Use(middleware.LoggerWithConfig(loggerConfig))
 	e.Use(middleware.Secure())
 	e.Use(middleware.BodyLimit(bodyLimit))
 
@@ -83,7 +85,7 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc, 
 	e.GET(utils.PUBLIC_PREFIX+"/"+utils.USER_PREFIX+":userId/:file", fsh.PublicDownloadHandler)
 	e.DELETE("/publish/:file", fsh.DeletePublish)
 
-	e.Pre(getStaticMiddleware(static))
+	e.Pre(echo.MiddlewareFunc(staticMiddleware))
 
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
@@ -96,7 +98,9 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware echo.MiddlewareFunc, 
 	return e
 }
 
-func getStaticMiddleware(box *rice.HTTPBox) echo.MiddlewareFunc {
+func configureStaticMiddleware() staticMiddleware {
+	box := rice.MustFindBox("static").HTTPBox()
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			reqUrl := c.Request().RequestURI
@@ -121,7 +125,7 @@ func checkUrlInWhitelist(whitelist []regexp.Regexp, uri string) bool {
 	return false
 }
 
-func configureAuthMiddleware(httpClient client.RestClient) echo.MiddlewareFunc {
+func configureAuthMiddleware(httpClient client.RestClient) authMiddleware {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			whitelistStr := viper.GetStringSlice("auth.exclude")

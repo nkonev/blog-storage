@@ -341,7 +341,7 @@ func (h *FsHandler) DeleteHandler(c echo.Context) error {
 
 	if err := h.minio.RemoveObject(bucketName, objId); err != nil {
 		Logger.Errorf("Error during remove object from minio: %v", err)
-		return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
+		return err
 	}
 
 	userFilesCollection := h.getUserCollection(c)
@@ -394,14 +394,7 @@ func (h *FsHandler) getPublicUrl(bucketName string, minioObjId string) string {
 }
 
 func (h *FsHandler) Publish(c echo.Context) error {
-	bucketName := h.ensureAndGetBucket(c)
-
 	objId := getFileId(c)
-
-	_, e := h.minio.StatObject(bucketName, objId, minio.StatObjectOptions{})
-	if e != nil {
-		return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
-	}
 
 	elem, err := h.userFileRepository.UpdatePublished(getBucketName(c), objId, true)
 	if err != nil {

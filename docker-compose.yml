@@ -12,6 +12,8 @@ services:
       - 27017:27017
     volumes:
       - mongo_blog_storage_data_dir:/data/db
+      - ./docker/mongo/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    command: ["--replSet", "rs0"]
     logging:
       driver: "json-file"
       options:

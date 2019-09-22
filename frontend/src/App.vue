@@ -209,9 +209,12 @@
                                 dto: dto
                             }
                         },
-                        template: `<div><input         v-bind:value="dto.newname"
+                        template: `<div style="display: flex">
+                                        <input         v-bind:value="dto.newname"
                                                        v-on:input="dto.newname = $event.target.value"
-                                    ></input></div>`
+                                                       style="width:100%;"
+                                        ></input>
+                                   </div>`
                     }),
                     buttons: [
                         {
