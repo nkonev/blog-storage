@@ -27,7 +27,7 @@ services:
       - /host/etc/config.yml:/etc/config.yml
     command: ["-config=/etc/config.yml"]
   mongo:
-    image: mongo:4.1.7
+    image: mongo:4.2.0-bionic
     hostname: mongo
 #    ports:
 #      - 27017:27017
