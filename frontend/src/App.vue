@@ -43,8 +43,8 @@
 
                 <ul v-if="uploadFiles.length">
                     <li v-for="(file, index) in uploadFiles" :key="file.id">
-                        <span>{{file.name}}</span> -
-                        <span>{{file.size | formatSize}}</span><span v-if="file.error || file.success || file.active"> -</span>
+                        <span>{{file.name}}</span>
+                        <span>[{{file.size | formatSize}}]</span><span v-if="file.error || file.success || file.active"> -</span>
                         <span v-if="file.error">{{file.error}}</span>
                         <span v-else-if="file.success">success</span>
                         <span v-else-if="file.active">active</span>
@@ -61,8 +61,8 @@
 
             <div class="first-list">
                 <ul class="file-list">
-                    <li v-for="file in files" :key="file.id"><a :href="file.url" target="_blank">{{file.filename}}</a> -
-                        <span>{{file.size | formatSize}}</span>
+                    <li v-for="file in files" :key="file.id"><a :href="file.url" target="_blank">{{file.filename}}</a>
+                        <span>[{{file.size | formatSize}}]</span>
                         <template v-if="file.publicUrl">
                             <span class="btn-info" @click.prevent="unshareFile(file.id)">[unshare]</span>
                         </template>
@@ -269,6 +269,16 @@
 <style lang="stylus">
     html, body {
         height: 100%
+        width 100%
+        display flex
+    }
+
+    ul {
+        margin 0 0
+        padding-left: 0
+        li {
+            margin 0.4em 0
+        }
     }
 
     .first-list {
@@ -334,6 +344,7 @@
             display flex
             justify-content space-between
             align-items: center
+            //margin-bottom 0.6em
 
             .btn {
                 margin 1px
