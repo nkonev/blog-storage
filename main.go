@@ -119,26 +119,6 @@ func configureStaticMiddleware() staticMiddleware {
 	}
 }
 
-func configureTransactionMiddleware(mongoC *mongo.Client) transactionMiddleware {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			return mongoC.UseSession(context.TODO(), func(sessionContext mongo.SessionContext) error {
-				_, e := sessionContext.WithTransaction(context.TODO(), func(sessCtx mongo.SessionContext) (i interface{}, e error) {
-					Logger.Debugf("Starting mongo transaction pseudoId=%v", sessCtx)
-					e2 := next(c)
-					if e2 != nil {
-						Logger.Errorf("Got error during processing middleware chain, mongo transaction will be reverted pseudoId=%v", sessCtx)
-					} else {
-						Logger.Debugf("Mongo transaction will be committed pseudoId=%v", sessCtx)
-					}
-					return nil, e2
-				})
-				return e
-			})
-		}
-	}
-}
-
 func checkUrlInWhitelist(whitelist []regexp.Regexp, uri string) bool {
 	for _, regexp0 := range whitelist {
 		if regexp0.MatchString(uri) {
