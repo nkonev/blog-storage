@@ -125,6 +125,7 @@ func configureTransactionMiddleware(mongoC *mongo.Client) transactionMiddleware 
 			return mongoC.UseSession(context.TODO(), func(sessionContext mongo.SessionContext) error {
 				_, e := sessionContext.WithTransaction(context.TODO(), func(sessCtx mongo.SessionContext) (i interface{}, e error) {
 					Logger.Debugf("Starting mongo transaction pseudoId=%v", sessCtx)
+					c.Set(utils.MONGO_SESSION, sessCtx)
 					e2 := next(c)
 					if e2 != nil {
 						Logger.Errorf("Got error during processing middleware chain, mongo transaction will be reverted pseudoId=%v", sessCtx)

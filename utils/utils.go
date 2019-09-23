@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/labstack/echo/v4"
+	. "github.com/nkonev/blog-storage/logger"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -59,6 +61,10 @@ func GetMongoDatabase(client *mongo.Client) *mongo.Database {
 	return client.Database(GetMongoDbName(GetMongoUrl()))
 }
 
+func GetMongoDatabaseName() string {
+	return GetMongoDbName(GetMongoUrl())
+}
+
 func InitViper(defaultLocation string) {
 	configFile := flag.String("config", defaultLocation, "Path to config file")
 	flag.Parse()
@@ -77,6 +83,7 @@ const USER_LOGIN = "userLogin"
 const DOWNLOAD_PREFIX = "/download/"
 const PUBLIC_PREFIX = "/public"
 const USER_PREFIX = "user"
+const MONGO_SESSION = "mongo_session"
 
 func GetMongoClient() *mongo.Client {
 	mongoUrl := GetMongoUrl()
@@ -90,4 +97,13 @@ func GetMongoClient() *mongo.Client {
 		log.Panicf("Error during connect: %v", err)
 	}
 	return client
+}
+
+func GetMongoSession(c echo.Context) (mongo.SessionContext) {
+	get, ok := c.Get(MONGO_SESSION).(mongo.SessionContext)
+	if !ok {
+		Logger.Errorf("Cannot get mongo sesswion context")
+		return nil
+	}
+	return get
 }

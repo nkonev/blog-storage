@@ -181,7 +181,7 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	mongoId, err := h.userFileRepository.InsertMetaInfoToMongo(getBucketName(c), file.Filename, i)
+	mongoId, err := h.userFileRepository.InsertMetaInfoToMongo(utils.GetMongoSession(c), getBucketName(c), file.Filename, i)
 	if err != nil {
 		return err
 	}
@@ -192,6 +192,7 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "id": mongoId})
+	//return errors.New("FFFFail me" + *mongoId)
 }
 
 func (h *FsHandler) getUserCollection(c echo.Context) *mongo.Collection {
@@ -281,7 +282,7 @@ func (h *FsHandler) DownloadHandler(c echo.Context) error {
 		return e
 	}
 
-	dto, err := h.userFileRepository.GetMetainfoFromMongo(objId, getBucketNameInt(userId))
+	dto, err := h.userFileRepository.GetMetainfoFromMongo(utils.GetMongoSession(c), objId, getBucketNameInt(userId))
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
@@ -296,9 +297,9 @@ func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
 
 	objId := getFileId(c)
 
-	userId, err := h.globalIdRepository.GetUserIdByGlobalId(objId)
+	userId, err := h.globalIdRepository.GetUserIdByGlobalId(utils.GetMongoSession(c), objId)
 
-	dto, err := h.userFileRepository.GetMetainfoFromMongo(objId, getBucketNameInt(userId))
+	dto, err := h.userFileRepository.GetMetainfoFromMongo(utils.GetMongoSession(c), objId, getBucketNameInt(userId))
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
@@ -328,7 +329,7 @@ func (h *FsHandler) MoveHandler(c echo.Context) error {
 
 	bucketName := getBucketName(c)
 
-	if err := h.userFileRepository.RenameUserFile(from, u.Newname, bucketName); err != nil {
+	if err := h.userFileRepository.RenameUserFile(utils.GetMongoSession(c), from, u.Newname, bucketName); err != nil {
 		return err
 	}
 
@@ -396,7 +397,7 @@ func (h *FsHandler) getPublicUrl(bucketName string, minioObjId string) string {
 func (h *FsHandler) Publish(c echo.Context) error {
 	objId := getFileId(c)
 
-	elem, err := h.userFileRepository.UpdatePublished(getBucketName(c), objId, true)
+	elem, err := h.userFileRepository.UpdatePublished(utils.GetMongoSession(c), getBucketName(c), objId, true)
 	if err != nil {
 		return err
 	}
@@ -407,7 +408,7 @@ func (h *FsHandler) Publish(c echo.Context) error {
 func (h *FsHandler) DeletePublish(c echo.Context) error {
 	objId := getFileId(c)
 
-	_, err := h.userFileRepository.UpdatePublished(getBucketName(c), objId, false)
+	_, err := h.userFileRepository.UpdatePublished(utils.GetMongoSession(c), getBucketName(c), objId, false)
 	if err != nil {
 		return err
 	}

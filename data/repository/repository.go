@@ -82,10 +82,10 @@ func GetUpdateDoc(p bson.M) bson.M {
 	return update
 }
 
-func (r *GlogalIdRepository) GetNextGlobalId(userIdV int) (*string, error) {
+func (r *GlogalIdRepository) GetNextGlobalId(cont mongo.SessionContext, userIdV int) (*string, error) {
 	database := utils.GetMongoDatabase(r.mongo)
 	globalIdDoc := NewGlogalIdDoc(userIdV)
-	result, e := database.Collection(collectionGlobalObjects).InsertOne(context.TODO(), globalIdDoc)
+	result, e := database.Collection(collectionGlobalObjects).InsertOne(cont, globalIdDoc)
 	if e != nil {
 		return nil, e
 	}
@@ -93,7 +93,7 @@ func (r *GlogalIdRepository) GetNextGlobalId(userIdV int) (*string, error) {
 	return &idMongo, nil
 }
 
-func (r *GlogalIdRepository) GetUserIdByGlobalId(objectId string) (int, error) {
+func (r *GlogalIdRepository) GetUserIdByGlobalId(cont mongo.SessionContext, objectId string) (int, error) {
 	ids, e := primitive.ObjectIDFromHex(objectId)
 	if e != nil {
 		return 0, e
@@ -101,7 +101,7 @@ func (r *GlogalIdRepository) GetUserIdByGlobalId(objectId string) (int, error) {
 	database := utils.GetMongoDatabase(r.mongo)
 
 	ms := bson.M{Id: ids}
-	one := database.Collection(collectionGlobalObjects).FindOne(context.TODO(), ms)
+	one := database.Collection(collectionGlobalObjects).FindOne(cont, ms)
 	if one.Err() != nil {
 		if one.Err() != mongo.ErrNoDocuments {
 			logger.Logger.Errorf("Error during get user id by global id %v", objectId)
@@ -117,10 +117,19 @@ func (r *GlogalIdRepository) GetUserIdByGlobalId(objectId string) (int, error) {
 	return int(elem.UserId), nil
 }
 
-func (r *UserFileRepository) InsertMetaInfoToMongo(userBucketName string, filename string, userId int) (*string, error) {
+func (r *UserFileRepository) InsertMetaInfoToMongo(cont mongo.SessionContext, userBucketName string, filename string, userId int) (*string, error) {
 	database := utils.GetMongoDatabase(r.mongo)
+	s :=bson.M{"create": userBucketName}
+	command := database.RunCommand(context.TODO(), &s)
+	if command.Err() != nil {
+		commandError, ok := command.Err().(mongo.CommandError)
+		if ok && commandError.Name == "NamespaceExists" {
 
-	globalId, err := r.globalIdRepository.GetNextGlobalId(userId)
+		}
+	}
+
+	Logger.Infof("%v", command)
+	globalId, err := r.globalIdRepository.GetNextGlobalId(cont, userId)
 	if err != nil {
 		Logger.Errorf("Error during create mongo global id document: %v", err)
 		return nil, err
@@ -131,7 +140,7 @@ func (r *UserFileRepository) InsertMetaInfoToMongo(userBucketName string, filena
 		return nil, err
 	}
 
-	inserted, err := database.Collection(userBucketName).InsertOne(context.TODO(), UserFileDto{Id: ids, Filename: filename, Published: false})
+	inserted, err := database.Collection(userBucketName).InsertOne(cont, UserFileDto{Id: ids, Filename: filename, Published: false})
 	if err != nil {
 		Logger.Errorf("Error during create mongo metadata document: %v", err)
 		return nil, err
@@ -140,7 +149,7 @@ func (r *UserFileRepository) InsertMetaInfoToMongo(userBucketName string, filena
 	return &idMongo, nil
 }
 
-func (r *UserFileRepository) GetMetainfoFromMongo(objectId string, userBucketName string) (*UserFileDto, error) {
+func (r *UserFileRepository) GetMetainfoFromMongo(cont mongo.SessionContext, objectId string, userBucketName string) (*UserFileDto, error) {
 	database := utils.GetMongoDatabase(r.mongo)
 	var userFilesCollection *mongo.Collection = database.Collection(userBucketName)
 
@@ -150,7 +159,7 @@ func (r *UserFileRepository) GetMetainfoFromMongo(objectId string, userBucketNam
 		return nil, err
 	}
 
-	one := userFilesCollection.FindOne(context.TODO(), ds)
+	one := userFilesCollection.FindOne(cont, ds)
 	if one == nil {
 		return nil, errors.New("Unexpected nil by id " + objectId)
 	}
@@ -169,7 +178,7 @@ func (r *UserFileRepository) GetMetainfoFromMongo(objectId string, userBucketNam
 	return &elem, nil
 }
 
-func (r *UserFileRepository) RenameUserFile(objId string, newname string, userBucketName string) error {
+func (r *UserFileRepository) RenameUserFile(cont mongo.SessionContext, objId string, newname string, userBucketName string) error {
 	database := utils.GetMongoDatabase(r.mongo)
 	var userFilesCollection *mongo.Collection = database.Collection(userBucketName)
 
@@ -179,7 +188,7 @@ func (r *UserFileRepository) RenameUserFile(objId string, newname string, userBu
 	}
 	updateDocument := GetUpdateDoc(primitive.M{filename: newname})
 
-	one := userFilesCollection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
+	one := userFilesCollection.FindOneAndUpdate(cont, findDocument, updateDocument)
 	if one == nil {
 		return errors.New("Unexpected nil result during update")
 	}
@@ -189,7 +198,7 @@ func (r *UserFileRepository) RenameUserFile(objId string, newname string, userBu
 	return nil
 }
 
-func (r *UserFileRepository) UpdatePublished(userBucketName string, objId string, setValPublished bool) (*UserFileDto, error) {
+func (r *UserFileRepository) UpdatePublished(cont mongo.SessionContext, userBucketName string, objId string, setValPublished bool) (*UserFileDto, error) {
 	database := utils.GetMongoDatabase(r.mongo)
 	var collection *mongo.Collection = database.Collection(userBucketName)
 
@@ -200,7 +209,7 @@ func (r *UserFileRepository) UpdatePublished(userBucketName string, objId string
 
 	updateDocument := GetUpdateDoc(primitive.M{published: setValPublished})
 
-	one := collection.FindOneAndUpdate(context.TODO(), findDocument, updateDocument)
+	one := collection.FindOneAndUpdate(cont, findDocument, updateDocument)
 	if one == nil {
 		return nil, errors.New("Unexpected nil result during update")
 	}
@@ -214,6 +223,7 @@ func (r *UserFileRepository) UpdatePublished(userBucketName string, objId string
 	return &elem, nil
 }
 
+// Non-transactional
 func IsDocumentExists(mongoC *mongo.Client, collection string, request interface{}, opts ...*options.FindOneOptions) (bool, error) {
 	database := utils.GetMongoDatabase(mongoC)
 
