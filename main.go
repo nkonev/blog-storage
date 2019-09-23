@@ -48,7 +48,6 @@ func main() {
 			configureMigrate,
 			configureAuthMiddleware,
 			configureStaticMiddleware,
-			configureTransactionMiddleware,
 			client.NewRestClient,
 		),
 		fx.Invoke(runMigrate, runEcho),
