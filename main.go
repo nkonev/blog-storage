@@ -30,7 +30,6 @@ const LOCK_COLLECTION = "migration_lock"
 
 type authMiddleware echo.MiddlewareFunc
 type staticMiddleware echo.MiddlewareFunc
-type transactionMiddleware echo.MiddlewareFunc
 
 func main() {
 	utils.InitViper("./config-dev/config.yml")
@@ -57,7 +56,7 @@ func main() {
 	Logger.Infof("Exit program")
 }
 
-func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, staticMiddleware staticMiddleware, transactionMiddleware transactionMiddleware, lc fx.Lifecycle) *echo.Echo {
+func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, staticMiddleware staticMiddleware, lc fx.Lifecycle) *echo.Echo {
 	bodyLimit := viper.GetString("server.body.limit")
 
 	e := echo.New()
@@ -76,9 +75,6 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, stati
 	e.Use(middleware.LoggerWithConfig(accessLoggerConfig))
 	e.Use(middleware.Secure())
 	e.Use(middleware.BodyLimit(bodyLimit))
-
-	// should be inserted AFTER access logging middleware, because it (re)set error to nil
-	e.Use(echo.MiddlewareFunc(transactionMiddleware))
 
 	e.GET("/ls", fsh.LsHandler)
 	e.GET("/limits", fsh.Limits)
