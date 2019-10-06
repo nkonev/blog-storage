@@ -24,7 +24,7 @@ type FsHandler struct {
 	minio              *minio.Client
 	mongo              *mongo.Client
 	userFileRepository *repository.UserFileRepository
-	globalIdRepository *repository.GlogalIdRepository
+	globalIdRepository *repository.GlobalIdRepository
 	limitsRepository   *repository.LimitsRepository
 }
 
@@ -46,7 +46,7 @@ func NewFsHandler(
 	minio *minio.Client,
 	client *mongo.Client,
 	userFileRepository *repository.UserFileRepository,
-	glogalIdRepository *repository.GlogalIdRepository,
+	glogalIdRepository *repository.GlobalIdRepository,
 	limitsRepository *repository.LimitsRepository,
 ) *FsHandler {
 	return &FsHandler{

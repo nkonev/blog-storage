@@ -32,19 +32,19 @@ type GlobalIdDoc struct {
 
 type UserFileRepository struct {
 	mongo              *mongo.Client
-	globalIdRepository *GlogalIdRepository
+	globalIdRepository *GlobalIdRepository
 }
 
-func NewUserFileRepository(mongo *mongo.Client, globalIdRepository *GlogalIdRepository) *UserFileRepository {
+func NewUserFileRepository(mongo *mongo.Client, globalIdRepository *GlobalIdRepository) *UserFileRepository {
 	return &UserFileRepository{mongo: mongo, globalIdRepository: globalIdRepository}
 }
 
-type GlogalIdRepository struct {
+type GlobalIdRepository struct {
 	mongo *mongo.Client
 }
 
-func NewGlogalIdRepository(mongo *mongo.Client) *GlogalIdRepository {
-	return &GlogalIdRepository{mongo: mongo}
+func NewGlobalIdRepository(mongo *mongo.Client) *GlobalIdRepository {
+	return &GlobalIdRepository{mongo: mongo}
 }
 
 type LimitsRepository struct {
@@ -82,7 +82,7 @@ func GetUpdateDoc(p bson.M) bson.M {
 	return update
 }
 
-func (r *GlogalIdRepository) GetNextGlobalId(userIdV int) (*string, error) {
+func (r *GlobalIdRepository) GetNextGlobalId(userIdV int) (*string, error) {
 	database := utils.GetMongoDatabase(r.mongo)
 	globalIdDoc := NewGlogalIdDoc(userIdV)
 	result, e := database.Collection(collectionGlobalObjects).InsertOne(context.TODO(), globalIdDoc)
@@ -93,7 +93,7 @@ func (r *GlogalIdRepository) GetNextGlobalId(userIdV int) (*string, error) {
 	return &idMongo, nil
 }
 
-func (r *GlogalIdRepository) GetUserIdByGlobalId(objectId string) (int, error) {
+func (r *GlobalIdRepository) GetUserIdByGlobalId(objectId string) (int, error) {
 	ids, e := primitive.ObjectIDFromHex(objectId)
 	if e != nil {
 		return 0, e
