@@ -36,6 +36,8 @@
                                 Reset
                             </button>
                         </template>
+
+                        <a href="/" class="tab" target="_blank">Open tab</a>
                     </div>
 
                     <div class="limits">Used: {{ bucketUsed | formatSize}}; Available: {{bucketAvailable | formatSize}}</div>
@@ -71,7 +73,7 @@
                         </template>
                         <span class="btn-info" @click.prevent="infoFile(file)">[i]</span>
                         <span class="btn-info" @click.prevent="renameFile(file)">[r]</span>
-                        <span class="btn-delete" @click.prevent="deleteFile(file.id)">[x]</span>
+                        <span class="btn-delete" @click.prevent="deleteFile(file.id, file.filename)">[x]</span>
                     </li>
                 </ul>
             </div>
@@ -123,12 +125,35 @@
 
                 this.uploadFiles.splice(index, 1)
             },
-            deleteFile(fileId) {
+            doDelete(fileId){
                 this.$http.delete('/delete/'+fileId).then(value => {
                     this.ls();
                 }, reason => {
                     console.error("error during deleting file");
+                });
+            },
+            deleteFile(fileId, fileName) {
+                this.$modal.show(DIALOG, {
+                    title: 'Delete confirmation',
+                    text: 'Do you want to delete this file "' + fileName +'" ?',
+                    buttons: [
+                        {
+                            title: 'No',
+                            default: true,
+                            handler: () => {
+                                this.$modal.hide(DIALOG)
+                            }
+                        },
+                        {
+                            title: 'Yes',
+                            handler: () => {
+                                this.doDelete(fileId);
+                                this.$modal.hide(DIALOG)
+                            }
+                        },
+                    ]
                 })
+
             },
             ls(){
                 this.$http.get('/ls').then(value => {
@@ -291,7 +316,7 @@
 
     .btn-select {
         color white
-        background blue
+        background #00ff77
         border-radius 2px
         padding 3px 3px
 
@@ -306,7 +331,7 @@
 
     .btn-select:hover {
         color white
-        background-color #003eff
+        background #0041ff
         border-radius 2px
         opacity: 0.8
         z-index 1000
@@ -354,6 +379,17 @@
                 display flex
                 justify-content start
                 align-items: center
+
+                a.tab {
+                    margin-left 1em
+                    margin-right 1em
+                }
+
+                @media screen and (min-width: 1000px) {
+                    a.tab {
+                        display none
+                    }
+                }
             }
 
             .limits {
