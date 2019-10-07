@@ -4,19 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/GeertJohan/go.rice"
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/minio/minio-go"
 	"github.com/nkonev/blog-storage/client"
-	"github.com/nkonev/blog-storage/data/migrate_rice"
 	"github.com/nkonev/blog-storage/data/mongo_lock"
 	"github.com/nkonev/blog-storage/data/repository"
 	"github.com/nkonev/blog-storage/handlers"
 	. "github.com/nkonev/blog-storage/logger"
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
+	migrate "github.com/xakep666/mongo-migrate"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/fx"
 	"net/http"
@@ -188,41 +186,50 @@ func configureAuthMiddleware(httpClient client.RestClient) authMiddleware {
 	}
 }
 
-func configureMigrate() *migrate.Migrate {
-	box := rice.MustFindBox("data/migrations")
-
-	driver, err := migrate_rice.WithInstance(box)
-	if err != nil {
-		Logger.Panicf("Error during create migrator driver: %v", err)
-	}
-
-	m, err := migrate.NewWithSourceInstance(migrate_rice.Name, driver, utils.GetMongoUrl())
-
-	if err != nil {
-		Logger.Panicf("Error during create migrator: %v", err)
-	}
+func configureMigrate(c *mongo.Client) *migrate.Migrate {
+	database := utils.GetMongoDatabase(c)
+	m := migrate.NewMigrate(database,
+		migrate.Migration{
+			Version:     1,
+			Description: "drop user15",
+			Up: func(db *mongo.Database) error {
+				return db.Collection("user15").Drop(context.TODO())
+			},
+		},
+		migrate.Migration{
+			Version:     2,
+			Description: "drop schema_migrations",
+			Up: func(db *mongo.Database) error {
+				return db.Collection("schema_migrations").Drop(context.TODO())
+			},
+		},
+		migrate.Migration{
+			Version:     3,
+			Description: "drop user5",
+			Up: func(db *mongo.Database) error {
+				return db.Collection("user5").Drop(context.TODO())
+			},
+		},
+	)
 	return m
 }
 
-func runMigrate(m *migrate.Migrate) {
+func runMigrate(m *migrate.Migrate) error {
 	mongoClient := utils.GetMongoClient()
 	defer mongoClient.Disconnect(context.TODO())
 
 	lock := mongo_lock.NewMongoLock(mongoClient, LOCK_COLLECTION)
 	lock.AcquireLock()
 
-	err := m.Up()
-	defer m.Close()
-	if err != nil {
-		if err.Error() == "no change" {
-			Logger.Info("Migration(s) already applied")
-		} else {
-			Logger.Panicf("Error during applying migrations: %v", err)
-		}
+	if err := m.Up(migrate.AllAvailable); err != nil {
+		return err
 	}
+
 	Logger.Info("Migration run successfully")
 
 	lock.ReleaseLock()
+
+	return nil
 }
 
 func configureMinio() *minio.Client {
