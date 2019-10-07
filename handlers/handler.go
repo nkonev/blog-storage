@@ -189,18 +189,6 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "id": mongoId})
 }
 
-func (h *FsHandler) getUserCollection(c echo.Context) *mongo.Collection {
-	database := utils.GetMongoDatabase(h.mongo)
-	bucketName := getBucketName(c)
-	return database.Collection(bucketName)
-}
-
-func (h *FsHandler) GetUserCollectionInt(userId int) *mongo.Collection {
-	database := utils.GetMongoDatabase(h.mongo)
-	bucketName := getBucketNameInt(userId)
-	return database.Collection(bucketName)
-}
-
 func getBucketName(c echo.Context) string {
 	i, _ := getUserIdFromRequest(c)
 	return getBucketNameInt(i)
@@ -333,12 +321,7 @@ func (h *FsHandler) DeleteHandler(c echo.Context) error {
 		return err
 	}
 
-	userFilesCollection := h.getUserCollection(c)
-	findDocument, err := repository.GetIdDoc(objId)
-	if err != nil {
-		return err
-	}
-	_, e := userFilesCollection.DeleteOne(context.TODO(), findDocument)
+	e := h.userFileRepository.Delete(objId)
 	if e != nil {
 		Logger.Errorf("Error during remove object from mongo: %v", e)
 		return e

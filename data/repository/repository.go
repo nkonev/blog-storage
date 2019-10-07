@@ -183,6 +183,18 @@ func (r *UserFileRepository) FindUserFiles(userIdInt int) (*mongo.Cursor, error)
 	return collection.Find(context.TODO(), bson.D{{userId, userIdInt}})
 }
 
+func (r *UserFileRepository) Delete(objId string) error {
+	database := utils.GetMongoDatabase(r.mongo)
+	var collection *mongo.Collection = database.Collection(collectionGlobalObjects)
+	d, e := GetIdDoc(objId)
+	if e != nil {
+		return e
+	}
+	_, e = collection.DeleteOne(context.TODO(), d)
+	return e
+
+}
+
 func IsDocumentExists(mongoC *mongo.Client, collection string, request interface{}, opts ...*options.FindOneOptions) (bool, error) {
 	database := utils.GetMongoDatabase(mongoC)
 
