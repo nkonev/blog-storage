@@ -18,7 +18,7 @@ const published = "published"
 const userId = "userid"
 
 const collectionLimits = "limits"
-const collectionGlobalObjects = "global_objects"
+const collectionUserFiles = "userFiles"
 
 // https://vkt.sh/go-mongodb-driver-cookbook/
 type UserFileDto struct {
@@ -75,7 +75,7 @@ func (r *UserFileRepository) GetUserIdByGlobalId(objectId string) (int, error) {
 	database := utils.GetMongoDatabase(r.mongo)
 
 	ms := bson.M{Id: ids}
-	one := database.Collection(collectionGlobalObjects).FindOne(context.TODO(), ms)
+	one := database.Collection(collectionUserFiles).FindOne(context.TODO(), ms)
 	if one.Err() != nil {
 		if one.Err() != mongo.ErrNoDocuments {
 			logger.Logger.Errorf("Error during get user id by global id %v", objectId)
@@ -94,7 +94,7 @@ func (r *UserFileRepository) GetUserIdByGlobalId(objectId string) (int, error) {
 func (r *UserFileRepository) InsertMetaInfoToMongo(filename string, userId int) (*string, error) {
 	database := utils.GetMongoDatabase(r.mongo)
 
-	inserted, err := database.Collection(collectionGlobalObjects).InsertOne(context.TODO(), UserFileDto{Filename: filename, Published: false, UserId: int64(userId)})
+	inserted, err := database.Collection(collectionUserFiles).InsertOne(context.TODO(), UserFileDto{Filename: filename, Published: false, UserId: int64(userId)})
 	if err != nil {
 		Logger.Errorf("Error during create mongo metadata document: %v", err)
 		return nil, err
@@ -105,7 +105,7 @@ func (r *UserFileRepository) InsertMetaInfoToMongo(filename string, userId int) 
 
 func (r *UserFileRepository) GetMetainfoFromMongo(objectId string) (*UserFileDto, error) {
 	database := utils.GetMongoDatabase(r.mongo)
-	var userFilesCollection *mongo.Collection = database.Collection(collectionGlobalObjects)
+	var userFilesCollection *mongo.Collection = database.Collection(collectionUserFiles)
 
 	ds, err := GetIdDoc(objectId)
 	if err != nil {
@@ -134,7 +134,7 @@ func (r *UserFileRepository) GetMetainfoFromMongo(objectId string) (*UserFileDto
 
 func (r *UserFileRepository) RenameUserFile(objId string, newname string) error {
 	database := utils.GetMongoDatabase(r.mongo)
-	var userFilesCollection *mongo.Collection = database.Collection(collectionGlobalObjects)
+	var userFilesCollection *mongo.Collection = database.Collection(collectionUserFiles)
 
 	findDocument, err := GetIdDoc(objId)
 	if err != nil {
@@ -154,7 +154,7 @@ func (r *UserFileRepository) RenameUserFile(objId string, newname string) error 
 
 func (r *UserFileRepository) UpdatePublished(objId string, setValPublished bool) (*UserFileDto, error) {
 	database := utils.GetMongoDatabase(r.mongo)
-	var collection *mongo.Collection = database.Collection(collectionGlobalObjects)
+	var collection *mongo.Collection = database.Collection(collectionUserFiles)
 
 	findDocument, err := GetIdDoc(objId)
 	if err != nil {
@@ -179,13 +179,13 @@ func (r *UserFileRepository) UpdatePublished(objId string, setValPublished bool)
 
 func (r *UserFileRepository) FindUserFiles(userIdInt int) (*mongo.Cursor, error) {
 	database := utils.GetMongoDatabase(r.mongo)
-	var collection *mongo.Collection = database.Collection(collectionGlobalObjects)
+	var collection *mongo.Collection = database.Collection(collectionUserFiles)
 	return collection.Find(context.TODO(), bson.D{{userId, userIdInt}})
 }
 
 func (r *UserFileRepository) Delete(objId string) error {
 	database := utils.GetMongoDatabase(r.mongo)
-	var collection *mongo.Collection = database.Collection(collectionGlobalObjects)
+	var collection *mongo.Collection = database.Collection(collectionUserFiles)
 	d, e := GetIdDoc(objId)
 	if e != nil {
 		return e
