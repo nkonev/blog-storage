@@ -10,7 +10,6 @@ import (
 	. "github.com/nkonev/blog-storage/logger"
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"mime/multipart"
 	"net/http"
@@ -24,7 +23,6 @@ type FsHandler struct {
 	minio              *minio.Client
 	mongo              *mongo.Client
 	userFileRepository *repository.UserFileRepository
-	globalIdRepository *repository.GlobalIdRepository
 	limitsRepository   *repository.LimitsRepository
 }
 
@@ -46,7 +44,6 @@ func NewFsHandler(
 	minio *minio.Client,
 	client *mongo.Client,
 	userFileRepository *repository.UserFileRepository,
-	glogalIdRepository *repository.GlobalIdRepository,
 	limitsRepository *repository.LimitsRepository,
 ) *FsHandler {
 	return &FsHandler{
@@ -54,7 +51,6 @@ func NewFsHandler(
 		serverUrl:          viper.GetString("server.url"),
 		mongo:              client,
 		userFileRepository: userFileRepository,
-		globalIdRepository: glogalIdRepository,
 		limitsRepository:   limitsRepository}
 }
 
@@ -79,8 +75,7 @@ func (h *FsHandler) LsHandler(c echo.Context) error {
 
 	Logger.Debugf("Listing bucket '%v':", bucket)
 
-	userFilesCollection := h.getUserCollection(c)
-	userFilesCursor, e := userFilesCollection.Find(context.TODO(), bson.D{})
+	userFilesCursor, e := h.userFileRepository.FindUserFiles(userId)
 	if e != nil {
 		Logger.Errorf("Error during querying record from mongo")
 		return e
@@ -181,7 +176,7 @@ func (h *FsHandler) UploadHandler(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	mongoId, err := h.userFileRepository.InsertMetaInfoToMongo(getBucketName(c), file.Filename, i)
+	mongoId, err := h.userFileRepository.InsertMetaInfoToMongo(file.Filename, i)
 	if err != nil {
 		return err
 	}
@@ -276,12 +271,8 @@ func (h *FsHandler) DownloadHandler(c echo.Context) error {
 	bucketName := h.ensureAndGetBucket(c)
 
 	objId := getFileId(c)
-	userId, e := getUserIdFromRequest(c)
-	if e != nil {
-		return e
-	}
 
-	dto, err := h.userFileRepository.GetMetainfoFromMongo(objId, getBucketNameInt(userId))
+	dto, err := h.userFileRepository.GetMetainfoFromMongo(objId)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
@@ -296,9 +287,9 @@ func (h *FsHandler) PublicDownloadHandler(c echo.Context) error {
 
 	objId := getFileId(c)
 
-	userId, err := h.globalIdRepository.GetUserIdByGlobalId(objId)
+	userId, err := h.userFileRepository.GetUserIdByGlobalId(objId)
 
-	dto, err := h.userFileRepository.GetMetainfoFromMongo(objId, getBucketNameInt(userId))
+	dto, err := h.userFileRepository.GetMetainfoFromMongo(objId)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return c.JSON(http.StatusNotFound, &utils.H{"status": "stat fail"})
@@ -326,9 +317,7 @@ func (h *FsHandler) MoveHandler(c echo.Context) error {
 		return err
 	}
 
-	bucketName := getBucketName(c)
-
-	if err := h.userFileRepository.RenameUserFile(from, u.Newname, bucketName); err != nil {
+	if err := h.userFileRepository.RenameUserFile(from, u.Newname); err != nil {
 		return err
 	}
 
@@ -396,7 +385,7 @@ func (h *FsHandler) getPublicUrl(bucketName string, minioObjId string) string {
 func (h *FsHandler) Publish(c echo.Context) error {
 	objId := getFileId(c)
 
-	elem, err := h.userFileRepository.UpdatePublished(getBucketName(c), objId, true)
+	elem, err := h.userFileRepository.UpdatePublished(objId, true)
 	if err != nil {
 		return err
 	}
@@ -407,7 +396,7 @@ func (h *FsHandler) Publish(c echo.Context) error {
 func (h *FsHandler) DeletePublish(c echo.Context) error {
 	objId := getFileId(c)
 
-	_, err := h.userFileRepository.UpdatePublished(getBucketName(c), objId, false)
+	_, err := h.userFileRepository.UpdatePublished(objId, false)
 	if err != nil {
 		return err
 	}

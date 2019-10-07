@@ -15,36 +15,25 @@ import (
 const Id = "_id"
 const filename = "filename"
 const published = "published"
+const userId = "userid"
 
 const collectionLimits = "limits"
 const collectionGlobalObjects = "global_objects"
 
 // https://vkt.sh/go-mongodb-driver-cookbook/
 type UserFileDto struct {
-	Id        primitive.ObjectID `bson:"_id"` // mongo document id equal to minio object jd
+	Id        primitive.ObjectID `bson:"_id,omitempty"` // mongo document id equal to minio object jd
 	Filename  string
 	Published bool
-}
-
-type GlobalIdDoc struct {
-	UserId int64
+	UserId    int64
 }
 
 type UserFileRepository struct {
-	mongo              *mongo.Client
-	globalIdRepository *GlobalIdRepository
-}
-
-func NewUserFileRepository(mongo *mongo.Client, globalIdRepository *GlobalIdRepository) *UserFileRepository {
-	return &UserFileRepository{mongo: mongo, globalIdRepository: globalIdRepository}
-}
-
-type GlobalIdRepository struct {
 	mongo *mongo.Client
 }
 
-func NewGlobalIdRepository(mongo *mongo.Client) *GlobalIdRepository {
-	return &GlobalIdRepository{mongo: mongo}
+func NewUserFileRepository(mongo *mongo.Client) *UserFileRepository {
+	return &UserFileRepository{mongo: mongo}
 }
 
 type LimitsRepository struct {
@@ -53,10 +42,6 @@ type LimitsRepository struct {
 
 func NewLimitsRepository(mongo *mongo.Client) *LimitsRepository {
 	return &LimitsRepository{mongo: mongo}
-}
-
-func NewGlogalIdDoc(userId int) *GlobalIdDoc {
-	return &GlobalIdDoc{UserId: int64(userId)}
 }
 
 func ToFileMongoDto(c *mongo.Cursor) (*UserFileDto, error) {
@@ -82,18 +67,7 @@ func GetUpdateDoc(p bson.M) bson.M {
 	return update
 }
 
-func (r *GlobalIdRepository) GetNextGlobalId(userIdV int) (*string, error) {
-	database := utils.GetMongoDatabase(r.mongo)
-	globalIdDoc := NewGlogalIdDoc(userIdV)
-	result, e := database.Collection(collectionGlobalObjects).InsertOne(context.TODO(), globalIdDoc)
-	if e != nil {
-		return nil, e
-	}
-	idMongo := result.InsertedID.(primitive.ObjectID).Hex()
-	return &idMongo, nil
-}
-
-func (r *GlobalIdRepository) GetUserIdByGlobalId(objectId string) (int, error) {
+func (r *UserFileRepository) GetUserIdByGlobalId(objectId string) (int, error) {
 	ids, e := primitive.ObjectIDFromHex(objectId)
 	if e != nil {
 		return 0, e
@@ -110,28 +84,17 @@ func (r *GlobalIdRepository) GetUserIdByGlobalId(objectId string) (int, error) {
 		}
 		return 0, one.Err()
 	}
-	var elem GlobalIdDoc
+	var elem UserFileDto
 	if err := one.Decode(&elem); err != nil {
 		return 0, err
 	}
 	return int(elem.UserId), nil
 }
 
-func (r *UserFileRepository) InsertMetaInfoToMongo(userBucketName string, filename string, userId int) (*string, error) {
+func (r *UserFileRepository) InsertMetaInfoToMongo(filename string, userId int) (*string, error) {
 	database := utils.GetMongoDatabase(r.mongo)
 
-	globalId, err := r.globalIdRepository.GetNextGlobalId(userId)
-	if err != nil {
-		Logger.Errorf("Error during create mongo global id document: %v", err)
-		return nil, err
-	}
-	ids, err := primitive.ObjectIDFromHex(*globalId)
-	if err != nil {
-		Logger.Errorf("Error during convert id: %v", err)
-		return nil, err
-	}
-
-	inserted, err := database.Collection(userBucketName).InsertOne(context.TODO(), UserFileDto{Id: ids, Filename: filename, Published: false})
+	inserted, err := database.Collection(collectionGlobalObjects).InsertOne(context.TODO(), UserFileDto{Filename: filename, Published: false, UserId: int64(userId)})
 	if err != nil {
 		Logger.Errorf("Error during create mongo metadata document: %v", err)
 		return nil, err
@@ -140,9 +103,9 @@ func (r *UserFileRepository) InsertMetaInfoToMongo(userBucketName string, filena
 	return &idMongo, nil
 }
 
-func (r *UserFileRepository) GetMetainfoFromMongo(objectId string, userBucketName string) (*UserFileDto, error) {
+func (r *UserFileRepository) GetMetainfoFromMongo(objectId string) (*UserFileDto, error) {
 	database := utils.GetMongoDatabase(r.mongo)
-	var userFilesCollection *mongo.Collection = database.Collection(userBucketName)
+	var userFilesCollection *mongo.Collection = database.Collection(collectionGlobalObjects)
 
 	ds, err := GetIdDoc(objectId)
 	if err != nil {
@@ -169,9 +132,9 @@ func (r *UserFileRepository) GetMetainfoFromMongo(objectId string, userBucketNam
 	return &elem, nil
 }
 
-func (r *UserFileRepository) RenameUserFile(objId string, newname string, userBucketName string) error {
+func (r *UserFileRepository) RenameUserFile(objId string, newname string) error {
 	database := utils.GetMongoDatabase(r.mongo)
-	var userFilesCollection *mongo.Collection = database.Collection(userBucketName)
+	var userFilesCollection *mongo.Collection = database.Collection(collectionGlobalObjects)
 
 	findDocument, err := GetIdDoc(objId)
 	if err != nil {
@@ -189,9 +152,9 @@ func (r *UserFileRepository) RenameUserFile(objId string, newname string, userBu
 	return nil
 }
 
-func (r *UserFileRepository) UpdatePublished(userBucketName string, objId string, setValPublished bool) (*UserFileDto, error) {
+func (r *UserFileRepository) UpdatePublished(objId string, setValPublished bool) (*UserFileDto, error) {
 	database := utils.GetMongoDatabase(r.mongo)
-	var collection *mongo.Collection = database.Collection(userBucketName)
+	var collection *mongo.Collection = database.Collection(collectionGlobalObjects)
 
 	findDocument, err := GetIdDoc(objId)
 	if err != nil {
@@ -212,6 +175,12 @@ func (r *UserFileRepository) UpdatePublished(userBucketName string, objId string
 		return nil, err
 	}
 	return &elem, nil
+}
+
+func (r *UserFileRepository) FindUserFiles(userIdInt int) (*mongo.Cursor, error) {
+	database := utils.GetMongoDatabase(r.mongo)
+	var collection *mongo.Collection = database.Collection(collectionGlobalObjects)
+	return collection.Find(context.TODO(), bson.D{{userId, userIdInt}})
 }
 
 func IsDocumentExists(mongoC *mongo.Client, collection string, request interface{}, opts ...*options.FindOneOptions) (bool, error) {

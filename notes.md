@@ -25,3 +25,15 @@ Caution! Don' t paste it to IntelliJ terminal - there is GO111MODULE=on.
 ```
 (cd client/; mockery -name RestClient)
 ```
+
+
+Migration
+```js
+db.getCollectionNames().forEach(function(collname) {
+    if(collname.startsWith('user') && collname != 'userData'){
+        db[collname].find().forEach( function(userDoc) {
+            db.global_objects.updateOne({_id: userDoc._id}, { $set: { filename: userDoc.filename, published: userDoc.published } })
+        } );
+    }
+})
+```
