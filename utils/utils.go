@@ -59,10 +59,17 @@ func GetMongoDatabase(client *mongo.Client) *mongo.Database {
 	return client.Database(GetMongoDbName(GetMongoUrl()))
 }
 
-func InitViper(defaultLocation string) {
+func InitFlag(defaultLocation string) (string, bool, bool) {
 	configFile := flag.String("config", defaultLocation, "Path to config file")
+	var mongo1 = flag.Bool("mongo", false, "clear orphans from mongo")
+	var minio = flag.Bool("minio", false, "clear orphans from minio")
+
 	flag.Parse()
-	viper.SetConfigFile(*configFile)
+	return *configFile, *mongo1, *minio
+}
+
+func InitViper(configFile string) {
+	viper.SetConfigFile(configFile)
 	// call multiple times to add many search paths
 	viper.SetEnvPrefix("BLOG_STORE")
 	viper.AutomaticEnv()

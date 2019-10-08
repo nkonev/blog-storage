@@ -27,7 +27,8 @@ func shutdown() {
 }
 
 func setup() {
-	utils.InitViper("../../config-dev/config.yml")
+	s, _, _ := utils.InitFlag("../../config-dev/config.yml")
+	utils.InitViper(s)
 
 	log.Info("Set up")
 	utils.DropMongo()

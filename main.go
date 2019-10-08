@@ -15,6 +15,7 @@ import (
 	"github.com/nkonev/blog-storage/utils"
 	"github.com/spf13/viper"
 	migrate "github.com/xakep666/mongo-migrate"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/fx"
 	"net/http"
@@ -30,7 +31,8 @@ type authMiddleware echo.MiddlewareFunc
 type staticMiddleware echo.MiddlewareFunc
 
 func main() {
-	utils.InitViper("./config-dev/config.yml")
+	configFile, clearMongo, clearMinio := utils.InitFlag("./config-dev/config.yml")
+	utils.InitViper(configFile)
 
 	app := fx.New(
 		fx.Logger(Logger),
@@ -46,7 +48,7 @@ func main() {
 			configureStaticMiddleware,
 			client.NewRestClient,
 		),
-		fx.Invoke(runMigrate, runEcho),
+		fx.Invoke(runMigrate, processCli(clearMongo, clearMinio), runEcho),
 	)
 	app.Run()
 
@@ -272,4 +274,128 @@ func runEcho(e *echo.Echo) {
 		}
 	}()
 	Logger.Info("Server started. Waiting for interrupt (2) (Ctrl+C)")
+}
+
+func searchObjectInMinio(client3 *minio.Client, filename string) (bool, error) {
+	infos, err := client3.ListBuckets()
+	if err != nil {
+		return false, err
+	}
+	for _, b := range infos {
+		// Create a done channel.
+		doneCh := make(chan struct{})
+		defer close(doneCh)
+		// Recurively list all objects in 'mytestbucket'
+		recursive := true
+		Logger.Debugf("Listing bucket '%v':", b.Name)
+		for objInfo := range client3.ListObjects(b.Name, "", recursive, doneCh) {
+			Logger.Debugf("Object '%v'", objInfo.Key)
+			if objInfo.Key == filename {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+func processCli(clearMongo bool, clearMinio bool) func(client2 *mongo.Client, client3 *minio.Client) error {
+	return func(client2 *mongo.Client, client3 *minio.Client) error {
+		if clearMongo {
+			Logger.Infof("Removing orphans from mongo")
+			var listToDeleteFromMongo []string = make([]string, 0)
+			cursor, e := utils.GetMongoDatabase(client2).Collection(repository.CollectionUserFiles).Find(context.TODO(), bson.D{})
+			if e != nil {
+				return e
+			}
+			defer cursor.Close(context.TODO())
+			for cursor.Next(context.TODO()) {
+				var elem repository.UserFileDto
+				err := cursor.Decode(&elem)
+				if err != nil {
+					return err
+				}
+				filename := elem.Id.Hex()
+
+				b, err := searchObjectInMinio(client3, filename)
+				if err != nil {
+					return err
+				}
+				if !b {
+					listToDeleteFromMongo = append(listToDeleteFromMongo, filename)
+				}
+			}
+			Logger.Infof("Found %v orphans in mongo", len(listToDeleteFromMongo))
+
+			for _, q := range listToDeleteFromMongo {
+				Logger.Infof("Removing %v from mongo", q)
+				d, e := repository.GetIdDoc(q)
+				if e != nil {
+					return e
+				}
+				_, e = utils.GetMongoDatabase(client2).Collection(repository.CollectionUserFiles).DeleteOne(context.TODO(), d)
+				if e != nil {
+					return e
+				}
+			}
+		} else {
+			Logger.Infof("Skipped removing orphans from mongo")
+		}
+
+		if clearMinio {
+
+			type pair struct {
+				bucketname string
+				filename   string
+			}
+
+			Logger.Infof("Removing orphans from minio")
+			var listToDeleteFromMinio []pair = make([]pair, 0)
+
+			infos, err := client3.ListBuckets()
+			if err != nil {
+				return err
+			}
+			for _, b := range infos {
+				// Create a done channel.
+				doneCh := make(chan struct{})
+				defer close(doneCh)
+				// Recurively list all objects in 'mytestbucket'
+				recursive := true
+				Logger.Debugf("Listing bucket '%v':", b.Name)
+				for objInfo := range client3.ListObjects(b.Name, "", recursive, doneCh) {
+					Logger.Debugf("Object '%v'", objInfo.Key)
+					bb, errHex, err := searchInMongo(client2, objInfo.Key)
+					if err != nil {
+						return err
+					}
+					if !bb || errHex != nil {
+						listToDeleteFromMinio = append(listToDeleteFromMinio, pair{b.Name, objInfo.Key})
+					}
+				}
+			}
+			Logger.Infof("Found %v orphans in minio", len(listToDeleteFromMinio))
+			for _, q := range listToDeleteFromMinio {
+				Logger.Infof("Removing %v from bucket %v minio", q.filename, q.bucketname)
+				err := client3.RemoveObject(q.bucketname, q.filename)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			Logger.Infof("Skipped removing orphans from minio")
+		}
+		return nil
+	}
+}
+
+func searchInMongo(client2 *mongo.Client, s string) (bool, error, error) {
+	d, e := repository.GetIdDoc(s)
+	if e != nil {
+		return false, e, nil
+	}
+	b, e := repository.IsDocumentExists(client2, repository.CollectionUserFiles, d)
+	if e != nil {
+		return false, nil, e
+	}
+	return b, nil, nil
 }
