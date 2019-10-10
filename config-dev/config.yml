@@ -24,6 +24,7 @@ minio:
 
 auth:
   url: "http://localhost:8070/api/profile"
+  adminRole: "ROLE_ADMIN"
   exclude:
     - "^/public.*"
 

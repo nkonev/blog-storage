@@ -38,6 +38,7 @@
                         </template>
 
                         <a href="/" class="tab" target="_blank">Open tab</a>
+                        <a href="/admin" class="tab" v-if="admin">Admin panel</a>
                     </div>
 
                     <div class="limits">Used: {{ bucketUsed | formatSize}}; Available: {{bucketAvailable | formatSize}}</div>
@@ -113,7 +114,8 @@
                 files: [],
                 uploadFiles: [],
                 bucketUsed: 0,
-                bucketAvailable: 0
+                bucketAvailable: 0,
+                admin: false
             }
         },
         filters: {
@@ -163,6 +165,7 @@
                 }).then(this.$http.get('/limits').then(value => {
                     this.bucketUsed = value.data.used;
                     this.bucketAvailable = value.data.available;
+                    this.admin = value.data.admin;
                 }, reason => {
                     console.error("error during get bucket stat");
                 }))

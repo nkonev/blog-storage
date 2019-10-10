@@ -143,6 +143,11 @@ func getUserIdFromContext(c echo.Context) (int, bool) {
 	return userId, ok
 }
 
+func getUserAdminFromContext(c echo.Context) (bool) {
+	userAdmin, ok := c.Get(utils.USER_ADMIN).(bool)
+	return ok && userAdmin
+}
+
 func (h *FsHandler) UploadHandler(c echo.Context) error {
 
 	file, err := c.FormFile(FormFile)
@@ -344,7 +349,7 @@ func (h *FsHandler) Limits(c echo.Context) error {
 	}
 	consumption := h.calcUserFilesConsumption(bucketName)
 
-	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "used": h.calcUserFilesConsumption(bucketName), "available": max - consumption})
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "used": h.calcUserFilesConsumption(bucketName), "available": max - consumption, "admin": getUserAdminFromContext(c)})
 }
 
 func (h *FsHandler) calcUserFilesConsumption(bucketName string) int64 {

@@ -177,6 +177,21 @@ func configureAuthMiddleware(httpClient client.RestClient) authMiddleware {
 					return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
 				}
 				c.Set(utils.USER_ID, int(i))
+
+				roles, ok2 := dto["roles"].([]interface{})
+				if !ok2 {
+					Logger.Errorf("Error during casting to int")
+					return c.JSON(http.StatusInternalServerError, &utils.H{"status": "fail"})
+				}
+
+				c.Set(utils.USER_ADMIN, false)
+				for _, r := range roles {
+					rr := r.(string)
+					if len(rr) != 0 && r == viper.GetString("auth.adminRole") {
+						c.Set(utils.USER_ADMIN, true)
+						break
+					}
+				}
 				c.Set(utils.USER_LOGIN, dto["login"])
 				return next(c)
 			} else {

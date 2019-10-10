@@ -80,6 +80,7 @@ func InitViper(configFile string) {
 }
 
 const USER_ID = "userId"
+const USER_ADMIN = "userAdmin"
 const USER_LOGIN = "userLogin"
 const DOWNLOAD_PREFIX = "/download/"
 const PUBLIC_PREFIX = "/public"
