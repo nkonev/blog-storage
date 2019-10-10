@@ -5,6 +5,17 @@
             <h4>Unauthenticated</h4>
             <button @click="refresh()">Refresh</button>
         </div>
+        <template v-else-if="showAdminPanel">
+            <div class="header">
+                <button class="back" @click.prevent="resetShowAdminPanel()">< Back</button>
+            </div>
+            <div class="first-list">
+                <ul class="user-list">
+                    <li><span><a href="#">#5</a> Ivan Ivanov</span> <span class="btn-info">[set unlimited]</span></li>
+                    <li><span><a href="#">#6</a> <b>Petr Petrov</b></span> <span class="btn-info">[unset unlimited]</span></li>
+                </ul>
+            </div>
+        </template>
         <template v-else>
             <div class="second-list">
                 <div v-show="$refs.upload && $refs.upload.dropActive" class="drop-active">
@@ -38,7 +49,7 @@
                         </template>
 
                         <a href="/" class="tab" target="_blank">Open tab</a>
-                        <a href="/admin" class="tab" v-if="admin">Admin panel</a>
+                        <button class="tab" v-if="admin" @click.prevent="setShowAdminPanel()">Admin panel</button>
                     </div>
 
                     <div class="limits">Used: {{ bucketUsed | formatSize}}; Available: {{bucketAvailable | formatSize}}</div>
@@ -115,13 +126,20 @@
                 uploadFiles: [],
                 bucketUsed: 0,
                 bucketAvailable: 0,
-                admin: false
+                admin: false,
+                showAdminPanel: false
             }
         },
         filters: {
             formatSize: formatSize
         },
         methods: {
+            setShowAdminPanel() {
+                this.showAdminPanel = true;
+            },
+            resetShowAdminPanel() {
+                this.showAdminPanel = false;
+            },
             deleteUpload(filename, index){
                 console.log("deleting " + filename);
 
@@ -311,6 +329,12 @@
 
     .first-list {
         width 100%
+        .file-list {
+            width 100%
+        }
+        .user-list {
+            width 100%
+        }
     }
 
     .second-list {
@@ -359,10 +383,6 @@
         overflow-y auto
         overflow-x hidden
 
-
-        .file-list {
-            width 100%
-        }
 
         hr {
             width 100%
