@@ -103,7 +103,6 @@
     import store, {GET_UNAUTHENTICATED} from "./store"
     import {mapGetters} from 'vuex'
     import vmodal from 'vue-js-modal'
-    import notifications from "./notifications";
 
     const DIALOG = "dialog";
 
