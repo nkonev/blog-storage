@@ -221,3 +221,20 @@ func IsDocumentExists(mongoC *mongo.Client, collection string, request interface
 func (r *LimitsRepository) IsStorageUnlimitedForUser(userId int) (bool, error) {
 	return IsDocumentExists(r.mongo, collectionLimits, bson.D{{Id, userId}})
 }
+
+func (r *LimitsRepository) Patch(userId int, limited bool) error {
+	database := utils.GetMongoDatabase(r.mongo)
+	if limited {
+		_, e := database.Collection(collectionLimits).DeleteOne(context.TODO(), bson.D{{Id, userId}})
+		if e != nil {
+			return e
+		}
+	} else {
+		// unlimited
+		_, e := database.Collection(collectionLimits).InsertOne(context.TODO(), bson.D{{Id, userId}})
+		if e != nil {
+			return e
+		}
+	}
+	return nil
+}

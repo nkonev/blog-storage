@@ -29,7 +29,7 @@ import (
 func makeOkAuthServer() *test.Server {
 	testServer := test.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(200)
-		res.Write([]byte(`{"id": 1, "login": "nikita k"}`))
+		res.Write([]byte(`{"id": 1, "login": "nikita k", "roles": ["ROLE_USER"]}`))
 	}))
 	return testServer
 }

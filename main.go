@@ -84,6 +84,8 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, stati
 	e.PUT("/publish/:file", fsh.Publish)
 	e.GET(utils.PUBLIC_PREFIX+"/"+utils.USER_PREFIX+":userId/:file", fsh.PublicDownloadHandler)
 	e.DELETE("/publish/:file", fsh.DeletePublish)
+	e.GET("/users", fsh.AdminUsersHandler)
+	e.PATCH("/users", fsh.AdminPatchUserHandler)
 
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {

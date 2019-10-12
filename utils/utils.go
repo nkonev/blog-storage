@@ -85,6 +85,7 @@ const USER_LOGIN = "userLogin"
 const DOWNLOAD_PREFIX = "/download/"
 const PUBLIC_PREFIX = "/public"
 const USER_PREFIX = "user"
+const LIMITED = "limited"
 
 func GetMongoClient() *mongo.Client {
 	mongoUrl := GetMongoUrl()

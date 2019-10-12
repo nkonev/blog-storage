@@ -8,11 +8,14 @@
         <template v-else-if="showAdminPanel">
             <div class="header">
                 <button class="back" @click.prevent="resetShowAdminPanel()">< Back</button>
+                <h3>Configure user limits</h3>
             </div>
             <div class="first-list">
                 <ul class="user-list">
-                    <li><span><a href="#">#5</a> Ivan Ivanov</span> <span class="btn-info">[set unlimited]</span></li>
-                    <li><span><a href="#">#6</a> <b>Petr Petrov</b></span> <span class="btn-info">[unset unlimited]</span></li>
+                    <li v-for="user in users" :key="user.id"><span>#{{user.id}}</span>
+                        <span v-if="user.unlimited" class="btn-info" @click="setLimited(user.id, true)">[set limited]</span>
+                        <span v-else class="btn-info" @click="setLimited(user.id, false)">[set unlimited]</span>
+                    </li>
                 </ul>
             </div>
         </template>
@@ -100,6 +103,7 @@
     import store, {GET_UNAUTHENTICATED} from "./store"
     import {mapGetters} from 'vuex'
     import vmodal from 'vue-js-modal'
+    import notifications from "./notifications";
 
     const DIALOG = "dialog";
 
@@ -127,18 +131,39 @@
                 bucketUsed: 0,
                 bucketAvailable: 0,
                 admin: false,
-                showAdminPanel: false
+                showAdminPanel: false,
+                users: []
             }
         },
         filters: {
             formatSize: formatSize
         },
         methods: {
+            setLimited(id, limited){
+                this.$http.patch('/users?userId='+id+'&limited='+limited).then(value => {
+                    this.getUsers();
+                }, reason => {
+                    console.error("error during patch user");
+                }).then(value => {
+
+                }, reason => {
+                    console.error("error during update users after patch");
+                })
+            },
             setShowAdminPanel() {
                 this.showAdminPanel = true;
+                this.getUsers();
             },
             resetShowAdminPanel() {
                 this.showAdminPanel = false;
+                this.$data.users = []
+            },
+            getUsers(){
+                this.$http.get('/users').then(value => {
+                    this.$data.users = value.body.users;
+                }, reason => {
+                    console.error("error during get users");
+                })
             },
             deleteUpload(filename, index){
                 console.log("deleting " + filename);
@@ -396,6 +421,11 @@
 
             .btn {
                 margin 1px
+            }
+
+            .back {
+                margin-right 0.6em
+                margin-left 0.6em
             }
 
             .buttons {

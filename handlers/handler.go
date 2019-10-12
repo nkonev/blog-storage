@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -143,7 +144,7 @@ func getUserIdFromContext(c echo.Context) (int, bool) {
 	return userId, ok
 }
 
-func getUserAdminFromContext(c echo.Context) (bool) {
+func getUserAdminFromContext(c echo.Context) bool {
 	userAdmin, ok := c.Get(utils.USER_ADMIN).(bool)
 	return ok && userAdmin
 }
@@ -411,4 +412,70 @@ func (h *FsHandler) getMaxAllowedConsumption(userId int) (int64, error) {
 	} else {
 		return viper.GetInt64("limits.default.per.user.max"), nil
 	}
+}
+
+type UserDto struct {
+	Id        int64 `json:"id"`
+	Unlimited bool  `json:"unlimited"`
+}
+
+func (h *FsHandler) AdminUsersHandler(c echo.Context) error {
+	admin := getUserAdminFromContext(c)
+	if !admin {
+		return c.JSON(http.StatusUnauthorized, &utils.H{"status": "not admin"})
+
+	}
+
+	infos, e := h.minio.ListBuckets()
+	if e != nil {
+		return e
+	}
+
+	var a = make([]UserDto, 0)
+	for _, bucket := range infos {
+		if strings.Index(bucket.Name, utils.USER_PREFIX) == 0 {
+			var i int
+			_, e := fmt.Sscanf(bucket.Name, utils.USER_PREFIX+"%d", &i)
+			if e == nil {
+				unlim, e := h.limitsRepository.IsStorageUnlimitedForUser(i)
+				if e != nil {
+					Logger.Warnf("Error during parse user id from bucket %v", e)
+				} else {
+					a = append(a, UserDto{Id: int64(i), Unlimited: unlim})
+				}
+			} else {
+				Logger.Warnf("Error during parse user id from bucket %v", e)
+			}
+		}
+	}
+
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok", "users": a})
+}
+
+func (h *FsHandler) AdminPatchUserHandler(c echo.Context) error {
+	admin := getUserAdminFromContext(c)
+	if !admin {
+		return c.JSON(http.StatusUnauthorized, &utils.H{"status": "not admin"})
+
+	}
+
+	userIdStr := c.QueryParam(utils.USER_ID)
+	limitedStr := c.QueryParam(utils.LIMITED)
+
+	userId, e := strconv.Atoi(userIdStr)
+	if e != nil {
+		return e
+	}
+
+	limited, e := strconv.ParseBool(limitedStr)
+	if e != nil {
+		return e
+	}
+
+	e = h.limitsRepository.Patch(userId, limited)
+	if e != nil {
+		return e
+	}
+
+	return c.JSON(http.StatusOK, &utils.H{"status": "ok"})
 }
