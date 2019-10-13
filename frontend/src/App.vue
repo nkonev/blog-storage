@@ -21,7 +21,7 @@
         </template>
         <template v-else>
             <div class="second-list">
-                <div v-show="$refs.upload && $refs.upload.dropActive" class="drop-active">
+                <div v-show="$refs.uploadComponent && $refs.uploadComponent.dropActive" class="drop-active">
                     <h3>Drop files to upload</h3>
                 </div>
 
@@ -34,15 +34,15 @@
                                 :drop="true"
                                 :drop-directory="true"
                                 v-model="uploadFiles"
-                                ref="upload">
+                                ref="uploadComponent">
                             Select files
                         </file-upload>
 
                         <template v-if="uploadFiles.length">
-                            <button type="button" class="btn btn-success" v-if="!$refs.upload || !$refs.upload.active" @click.prevent="$refs.upload.active = true">
+                            <button type="button" class="btn btn-success" v-if="!$refs.uploadComponent || !$refs.uploadComponent.active" @click.prevent="$refs.uploadComponent.active = true">
                                 Start Upload
                             </button>
-                            <button type="button" class="btn btn-danger" v-else @click.prevent="$refs.upload.active = false">
+                            <button type="button" class="btn btn-danger" v-else @click.prevent="$refs.uploadComponent.active = false">
                                 Stop Upload
                             </button>
 
@@ -69,7 +69,7 @@
                         <span class="progress" v-if="file.active || file.progress !== '0.00'">
                             {{file.progress}}%
                         </span>
-                        <span class="btn-delete" @click.prevent="deleteUpload(file.name, index)" v-if="!$refs.upload || !$refs.upload.active">[x]</span>
+                        <span class="btn-delete" @click.prevent="deleteUpload(file.name, index)" v-if="!$refs.uploadComponent || !$refs.uploadComponent.active">[x]</span>
                     </li>
                 </ul>
             </div>
@@ -103,6 +103,7 @@
     import store, {GET_UNAUTHENTICATED} from "./store"
     import {mapGetters} from 'vuex'
     import vmodal from 'vue-js-modal'
+    import Notifications from "./notifications"
 
     const DIALOG = "dialog";
 
@@ -217,7 +218,7 @@
             },
             reset(){
                 console.log("resetting");
-                this.$refs.upload.clear();
+                this.$refs.uploadComponent.clear();
                 this.ls();
             },
             shareFile(fileId){
@@ -309,20 +310,6 @@
                 })
             }
         },
-        watch: {
-            uploadFiles: {
-                handler: function (val, oldVal) {
-                    let allSuccess = true;
-                    for (let file of val) {
-                        allSuccess = allSuccess && file.success;
-                    }
-                    if (allSuccess && this.uploadFiles.length > 0) {
-                        this.reset();
-                    }
-                },
-                deep: true
-            }
-        },
         created(){
             this.ls();
         },
@@ -333,6 +320,19 @@
             ...mapGetters({unauthenticated: GET_UNAUTHENTICATED}), // unauthorized is here, 'GET_UNAUTHORIZED' -- in store.js
         },
         store,
+        mounted () {
+            this.$watch(
+                () => {
+                    return this.$refs.uploadComponent.uploaded
+                },
+                (val) => {
+                    if (val) {
+                        this.reset();
+                        Notifications.info("Uploading finished");
+                    }
+                }
+            )
+        }
     }
 </script>
 
