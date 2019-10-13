@@ -26,6 +26,9 @@ export default {
     error(m, b, s) {
         VueNotifications.error({title: 'Unexpected server error', message: 'Unexpected server error occurred on '+m+' '+b + ' ' + s})
     },
+    simpleError(title, message) {
+        VueNotifications.error({title: title, message: message})
+    },
     info(title, message){
         VueNotifications.info({title: title, message: message})
     }
