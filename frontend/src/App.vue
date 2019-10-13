@@ -321,6 +321,7 @@
         },
         store,
         mounted () {
+            const that = this;
             this.$watch(
                 () => {
                     return this.$refs.uploadComponent.uploaded
