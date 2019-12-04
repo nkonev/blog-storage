@@ -64,7 +64,7 @@
                         <span>[{{file.size | formatSize}}]</span><span v-if="file.error || file.success || file.active"> -</span>
                         <span v-if="file.error">{{file.error}}</span>
                         <span v-else-if="file.success">success</span>
-                        <span v-else-if="file.active">active</span>
+                        <span v-else-if="file.active">uploading</span>
                         <span v-else></span>
                         <span class="progress" v-if="file.active || file.progress !== '0.00'">
                             {{file.progress}}%
