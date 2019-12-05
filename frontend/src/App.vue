@@ -321,7 +321,26 @@
         },
         store,
         mounted () {
+            // https://gist.github.com/pbojinov/8965299
+            const bindEvent = (element, eventName, eventHandler) => {
+                if (element.addEventListener) {
+                    element.addEventListener(eventName, eventHandler, false);
+                } else if (element.attachEvent) {
+                    element.attachEvent('on' + eventName, eventHandler);
+                }
+            };
+
             const that = this;
+            // Listen to messages from parent window
+            bindEvent(window, 'message', function (e) {
+                if (e.data) {
+                    console.log("Event from parent:", e.data);
+                    if ('login' == e.data || 'logout' == e.data) {
+                        that.refresh();
+                    }
+                }
+            });
+
             this.$watch(
                 () => {
                     return this.$refs.uploadComponent.uploaded
