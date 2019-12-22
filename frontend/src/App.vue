@@ -310,6 +310,21 @@
                 })
             }
         },
+        watch: {
+            uploadFiles: {
+                handler: function (val, oldVal) {
+                    let allSuccess = true;
+                    for (let file of val) {
+                        allSuccess = allSuccess && file.success;
+                    }
+                    if (allSuccess && this.uploadFiles.length > 0) {
+                        this.reset();
+                        Notifications.info("Uploading finished");
+                    }
+                },
+                deep: true
+            }
+        },
         created(){
             this.ls();
         },
@@ -340,31 +355,6 @@
                     }
                 }
             });
-
-            this.$watch(
-                () => {
-                    return this.$refs.uploadComponent.uploaded
-                },
-                (val) => {
-                    if (val) { // uploaded == true
-
-                        let allSuccess = true;
-                        for (let file of this.uploadFiles) {
-                            // check status of each file in uploadFiles
-                            allSuccess = allSuccess && file.success;
-                        }
-
-                        if (allSuccess && this.uploadFiles.length > 0) {
-                            // all ok
-                            this.reset();
-                            Notifications.info("Uploading successfully finished");
-                        } else {
-                            // was errors
-                            Notifications.simpleError("Uploading finished with errors");
-                        }
-                    }
-                }
-            )
         }
     }
 </script>
