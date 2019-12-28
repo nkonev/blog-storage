@@ -87,6 +87,7 @@
                             <span class="btn-info" @click.prevent="shareFile(file.id)">[share]</span>
                         </template>
                         <span class="btn-info" @click.prevent="infoFile(file)">[i]</span>
+                        <span class="btn-info" v-if="canEditFile(file)" @click.prevent="editFile(file)">[e]</span>
                         <span class="btn-info" @click.prevent="renameFile(file)">[r]</span>
                         <span class="btn-delete" @click.prevent="deleteFile(file.id, file.filename)">[x]</span>
                     </li>
@@ -257,6 +258,26 @@
                     text: `<p>${file.filename}</p>
                            <p>${ formatSize(file.size)}</p>
                            ${file.publicUrl ? '<p><a href="' +file.publicUrl +'" target="_blank">Public link</a></p>' : ''}
+ `,
+                    buttons: [
+                        {
+                            title: 'Close',
+                            default: true,
+                            handler: () => {
+                                this.$modal.hide(DIALOG)
+                            }
+                        },
+                    ],
+                })
+            },
+            canEditFile(file){
+                return (file.name.endsWith(".txt"))
+            },
+            editFile(file){
+                this.$modal.show(DIALOG, {
+                    title: 'Info',
+                    text: `
+                           <textarea/>'
  `,
                     buttons: [
                         {
