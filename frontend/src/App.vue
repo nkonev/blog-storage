@@ -20,63 +20,68 @@
             </div>
         </template>
         <template v-else>
-            <div class="second-list">
+            <div class="second-list app-content-normal">
                 <div v-show="$refs.uploadComponent && $refs.uploadComponent.dropActive" class="drop-active">
                     <h3>Drop files to upload</h3>
                 </div>
 
                 <div class="header">
-                    <div class="buttons">
-                        <file-upload
-                                class="btn btn-select"
-                                post-action="/upload"
-                                :multiple="true"
-                                :drop="true"
-                                :drop-directory="true"
-                                v-model="uploadFiles"
-                                ref="uploadComponent">
-                            Select files
-                        </file-upload>
+                    <div class="header-horizontal">
+                        <div class="buttons">
+                            <file-upload
+                                    class="btn btn-select"
+                                    post-action="/upload"
+                                    :multiple="true"
+                                    :drop="true"
+                                    :drop-directory="true"
+                                    v-model="uploadFiles"
+                                    ref="uploadComponent">
+                                Select files111
+                            </file-upload>
 
-                        <template v-if="uploadFiles.length">
-                            <button type="button" class="btn btn-success" v-if="!$refs.uploadComponent || !$refs.uploadComponent.active" @click.prevent="$refs.uploadComponent.active = true">
-                                Start Upload
-                            </button>
-                            <button type="button" class="btn btn-danger" v-else @click.prevent="$refs.uploadComponent.active = false">
-                                Stop Upload
-                            </button>
+                            <template v-if="uploadFiles.length">
+                                <button type="button" class="btn btn-success" v-if="!$refs.uploadComponent || !$refs.uploadComponent.active" @click.prevent="$refs.uploadComponent.active = true">
+                                    Start Upload
+                                </button>
+                                <button type="button" class="btn btn-danger" v-else @click.prevent="$refs.uploadComponent.active = false">
+                                    Stop Upload
+                                </button>
 
-                            <button type="button" class="btn btn-danger" @click.prevent="reset()">
-                                Reset
-                            </button>
-                        </template>
+                                <button type="button" class="btn btn-danger" @click.prevent="reset()">
+                                    Reset
+                                </button>
+                            </template>
 
-                        <a href="/" class="tab" target="_blank">Open tab</a>
-                        <button class="tab" v-if="admin" @click.prevent="setShowAdminPanel()">Admin panel</button>
+                            <a href="/" class="tab" target="_blank">Open tab</a>
+                            <button class="tab" v-if="admin" @click.prevent="setShowAdminPanel()">Admin panel</button>
+                        </div>
+
+                        <div class="limits">Used: {{ bucketUsed | formatSize}}; Available: {{bucketAvailable | formatSize}}</div>
                     </div>
-
-                    <div class="limits">Used: {{ bucketUsed | formatSize}}; Available: {{bucketAvailable | formatSize}}</div>
+                    <div class="header-hr">
+                        <hr/>
+                    </div>
                 </div>
 
-                <ul v-if="uploadFiles.length">
-                    <li v-for="(file, index) in uploadFiles" :key="file.id">
-                        <span>{{file.name}}</span>
-                        <span>[{{file.size | formatSize}}]</span><span v-if="file.error || file.success || file.active"> -</span>
-                        <span v-if="file.error">{{file.error}}</span>
-                        <span v-else-if="file.success">success</span>
-                        <span v-else-if="file.active">uploading</span>
-                        <span v-else></span>
-                        <span class="progress" v-if="file.active || file.progress !== '0.00'">
-                            {{file.progress}}%
-                        </span>
-                        <span class="btn-delete" @click.prevent="deleteUpload(file.name, index)" v-if="!$refs.uploadComponent || !$refs.uploadComponent.active">[x]</span>
-                    </li>
-                </ul>
+                <div class="scrollable-list">
+                    <ul v-if="uploadFiles.length">
+                        <li v-for="(file, index) in uploadFiles" :key="file.id">
+                            <span>{{file.name}}</span>
+                            <span>[{{file.size | formatSize}}]</span><span v-if="file.error || file.success || file.active"> -</span>
+                            <span v-if="file.error">{{file.error}}</span>
+                            <span v-else-if="file.success">success</span>
+                            <span v-else-if="file.active">uploading</span>
+                            <span v-else></span>
+                            <span class="progress" v-if="file.active || file.progress !== '0.00'">
+                                {{file.progress}}%
+                            </span>
+                            <span class="btn-delete" @click.prevent="deleteUpload(file.name, index)" v-if="!$refs.uploadComponent || !$refs.uploadComponent.active">[x]</span>
+                        </li>
+                    </ul>
+                </div>
             </div>
 
-            <hr/>
-
-            <div class="first-list">
+            <div class="first-list scrollable-list">
                 <ul class="file-list">
                     <li v-for="file in files" :key="file.id"><a :href="file.url" target="_blank">{{file.filename}}</a>
                         <span>[{{file.size | formatSize}}]</span>
@@ -360,34 +365,6 @@
 </script>
 
 <style lang="stylus">
-    html, body {
-        height: 100%
-        width 100%
-        display flex
-    }
-
-    ul {
-        margin 0 0
-        padding-left: 0
-        li {
-            margin 0.4em 0
-        }
-    }
-
-    .first-list {
-        width 100%
-        .file-list {
-            width 100%
-        }
-        .user-list {
-            width 100%
-        }
-    }
-
-    .second-list {
-        width 100%
-    }
-
     .btn-select {
         color white
         background #00ff77
@@ -411,65 +388,82 @@
         z-index 1000
         filter brightness(2)
     }
-
-
 </style>
 
 <style lang="stylus" scoped>
     html, body {
         height: 100%
+        width 100%
+        display flex
     }
+
     #app {
         display flex
         flex-direction column
         justify-content start
-        align-items center
-        width 100%
-        height 98%
+        //align-items center
         font-family monospace, serif
-        overflow-y auto
-        overflow-x hidden
-
-
-        hr {
-            width 100%
-        }
 
         .header {
             display flex
-            justify-content space-between
-            align-items: center
-            //margin-bottom 0.6em
+            flex-direction column
+            align-items stretch
+            position fixed
+            right 0
+            left 0
+            top 0
 
-            .btn {
-                margin 1px
-            }
-
-            .back {
-                margin-right 0.6em
-                margin-left 0.6em
-            }
-
-            .buttons {
+            .header-horizontal {
                 display flex
-                justify-content start
+                justify-content space-between
                 align-items: center
+                margin-top 8px
+                margin-left 10px
+                margin-right 10px
 
-                a.tab {
-                    margin-left 1em
-                    margin-right 1em
+                .btn {
+                    margin 1px
                 }
 
-                @media screen and (min-width: 1000px) {
+                .back {
+                    margin-right 0.6em
+                    margin-left 0.6em
+                }
+
+                .buttons {
+                    display flex
+                    justify-content start
+                    align-items: center
+
                     a.tab {
-                        display none
+                        margin-left 1em
+                        margin-right 1em
+                    }
+
+                    @media screen and (min-width: 1000px) {
+                        a.tab {
+                            display none
+                        }
                     }
                 }
+
+                .limits {
+                    margin 4px
+                }
             }
 
-            .limits {
-                margin 4px
+            .header-hr {
+                width 100%
+                display flex
+                hr {
+                    width 100%
+                }
             }
+        }
+
+        .app-content-normal {
+            position static
+            display flex
         }
 
         .unauthenticated {
@@ -483,6 +477,24 @@
                 margin 0 0 0.8em 0
             }
         }
+
+        .scrollable-list {
+            width 100%
+            display flex
+            margin-top 30px
+
+            ul {
+                margin 0 0
+                padding-left: 0
+
+                li {
+                    margin 0.4em 0
+                }
+            }
+        }
+
+
+
     }
 
     .upload-drag {
