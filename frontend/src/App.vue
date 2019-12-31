@@ -10,7 +10,7 @@
                 <button class="back" @click.prevent="resetShowAdminPanel()">< Back</button>
                 <h3>Configure user limits</h3>
             </div>
-            <div class="first-list">
+            <div class="exists-files-list">
                 <ul class="user-list">
                     <li v-for="user in users" :key="user.id"><span>#{{user.id}}</span>
                         <span v-if="user.unlimited" class="btn-info" @click="setLimited(user.id, true)">[set limited]</span>
@@ -20,7 +20,7 @@
             </div>
         </template>
         <template v-else>
-            <div class="second-list">
+            <div class="uploadable-files-list">
                 <div v-show="$refs.uploadComponent && $refs.uploadComponent.dropActive" class="drop-active">
                     <h3>Drop files to upload</h3>
                 </div>
@@ -76,7 +76,7 @@
 
             <hr/>
 
-            <div class="first-list">
+            <div class="exists-files-list">
                 <ul class="file-list">
                     <li v-for="file in files" :key="file.id"><a :href="file.url" target="_blank">{{file.filename}}</a>
                         <span>[{{file.size | formatSize}}]</span>
@@ -374,7 +374,7 @@
         }
     }
 
-    .first-list {
+    .exists-files-list {
         width 100%
         .file-list {
             width 100%
@@ -384,7 +384,7 @@
         }
     }
 
-    .second-list {
+    .uploadable-files-list {
         width 100%
     }
 
