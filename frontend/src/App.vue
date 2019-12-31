@@ -7,11 +7,13 @@
         </div>
         <template v-else-if="showAdminPanel">
             <div class="header">
+                <div class="header-line-1">
                 <button class="back" @click.prevent="resetShowAdminPanel()">< Back</button>
-                <h3>Configure user limits</h3>
+                    <span>Configure user limits</span>
+                </div>
             </div>
             <div class="exists-files-list">
-                <ul class="user-list">
+                <ul class="div-list">
                     <li v-for="user in users" :key="user.id"><span>#{{user.id}}</span>
                         <span v-if="user.unlimited" class="btn-info" @click="setLimited(user.id, true)">[set limited]</span>
                         <span v-else class="btn-info" @click="setLimited(user.id, false)">[set unlimited]</span>
@@ -20,12 +22,8 @@
             </div>
         </template>
         <template v-else>
-            <div class="uploadable-files-list">
-                <div v-show="$refs.uploadComponent && $refs.uploadComponent.dropActive" class="drop-active">
-                    <h3>Drop files to upload</h3>
-                </div>
-
-                <div class="header">
+            <div class="header">
+                <div class="header-line-1">
                     <div class="buttons">
                         <file-upload
                                 class="btn btn-select"
@@ -54,45 +52,53 @@
                         <a href="/" class="tab" target="_blank">Open tab</a>
                         <button class="tab" v-if="admin" @click.prevent="setShowAdminPanel()">Admin panel</button>
                     </div>
-
                     <div class="limits">Used: {{ bucketUsed | formatSize}}; Available: {{bucketAvailable | formatSize}}</div>
                 </div>
-
-                <ul v-if="uploadFiles.length">
-                    <li v-for="(file, index) in uploadFiles" :key="file.id">
-                        <span>{{file.name}}</span>
-                        <span>[{{file.size | formatSize}}]</span><span v-if="file.error || file.success || file.active"> -</span>
-                        <span v-if="file.error">{{file.error}}</span>
-                        <span v-else-if="file.success">success</span>
-                        <span v-else-if="file.active">uploading</span>
-                        <span v-else></span>
-                        <span class="progress" v-if="file.active || file.progress !== '0.00'">
-                            {{file.progress}}%
-                        </span>
-                        <span class="btn-delete" @click.prevent="deleteUpload(file.name, index)" v-if="!$refs.uploadComponent || !$refs.uploadComponent.active">[x]</span>
-                    </li>
-                </ul>
+                <div class="header-line-2">
+                    <hr/>
+                </div>
             </div>
 
-            <hr/>
+            <div class="div-list">
+                <div class="uploadable-files-list">
+                    <div v-show="$refs.uploadComponent && $refs.uploadComponent.dropActive" class="drop-active">
+                        <h3>Drop files to upload</h3>
+                    </div>
 
-            <div class="exists-files-list">
-                <ul class="file-list">
-                    <li v-for="file in files" :key="file.id"><a :href="file.url" target="_blank">{{file.filename}}</a>
-                        <span>[{{file.size | formatSize}}]</span>
-                        <template v-if="file.publicUrl">
-                            <span class="btn-info" @click.prevent="unshareFile(file.id)">[unshare]</span>
-                        </template>
-                        <template v-else>
-                            <span class="btn-info" @click.prevent="shareFile(file.id)">[share]</span>
-                        </template>
-                        <span class="btn-info" @click.prevent="infoFile(file)">[i]</span>
-                        <span class="btn-info" @click.prevent="renameFile(file)">[r]</span>
-                        <span class="btn-delete" @click.prevent="deleteFile(file.id, file.filename)">[x]</span>
-                    </li>
-                </ul>
+                    <ul v-if="uploadFiles.length" class="file-list">
+                        <li v-for="(file, index) in uploadFiles" :key="file.id">
+                            <span>{{file.name}}</span>
+                            <span>[{{file.size | formatSize}}]</span><span v-if="file.error || file.success || file.active"> -</span>
+                            <span v-if="file.error">{{file.error}}</span>
+                            <span v-else-if="file.success">success</span>
+                            <span v-else-if="file.active">uploading</span>
+                            <span v-else></span>
+                            <span class="progress" v-if="file.active || file.progress !== '0.00'">
+                                {{file.progress}}%
+                            </span>
+                            <span class="btn-delete" @click.prevent="deleteUpload(file.name, index)" v-if="!$refs.uploadComponent || !$refs.uploadComponent.active">[x]</span>
+                        </li>
+                    </ul>
+                    <hr v-if="uploadFiles.length"/>
+                </div>
+
+                <div class="exists-files-list">
+                    <ul class="file-list">
+                        <li v-for="file in files" :key="file.id"><a :href="file.url" target="_blank">{{file.filename}}</a>
+                            <span>[{{file.size | formatSize}}]</span>
+                            <template v-if="file.publicUrl">
+                                <span class="btn-info" @click.prevent="unshareFile(file.id)">[unshare]</span>
+                            </template>
+                            <template v-else>
+                                <span class="btn-info" @click.prevent="shareFile(file.id)">[share]</span>
+                            </template>
+                            <span class="btn-info" @click.prevent="infoFile(file)">[i]</span>
+                            <span class="btn-info" @click.prevent="renameFile(file)">[r]</span>
+                            <span class="btn-delete" @click.prevent="deleteFile(file.id, file.filename)">[x]</span>
+                        </li>
+                    </ul>
+                </div>
             </div>
-
         </template>
     </div>
 </template>
@@ -361,31 +367,10 @@
 
 <style lang="stylus">
     html, body {
-        height: 100%
+        height: 98%
         width 100%
         display flex
-    }
-
-    ul {
-        margin 0 0
-        padding-left: 0
-        li {
-            margin 0.4em 0
-        }
-    }
-
-    .exists-files-list {
-        width 100%
-        .file-list {
-            width 100%
-        }
-        .user-list {
-            width 100%
-        }
-    }
-
-    .uploadable-files-list {
-        width 100%
+        overflow-y hidden
     }
 
     .btn-select {
@@ -416,30 +401,73 @@
 </style>
 
 <style lang="stylus" scoped>
-    html, body {
-        height: 100%
-    }
+    $headerHeight=28px
     #app {
         display flex
         flex-direction column
         justify-content start
         align-items center
         width 100%
-        height 98%
+        height 100%
         font-family monospace, serif
-        overflow-y auto
-        overflow-x hidden
-
 
         hr {
+            width 100%
+            margin 0
+            color lightgray
+        }
+
+        ul {
+            margin 0 0
+            padding-left: 0 // remove circle
+            li {
+                margin 0.4em 0
+            }
+        }
+
+        .exists-files-list {
+            width 100%
+
+        }
+
+        .uploadable-files-list {
+            width 100%
+        }
+
+        .file-list {
             width 100%
         }
 
         .header {
             display flex
+            flex-direction column
+            left 0
+            right 0
+            top 0
+            position fixed
+            height $headerHeight
+            background white
+        }
+
+        .div-list {
+            margin-top $headerHeight
+            overflow-y auto
+            width: 100%
+
+            hr {
+                width 98%
+            }
+        }
+
+        .header-line-1 {
+            display flex
             justify-content space-between
             align-items: center
-            //margin-bottom 0.6em
+            margin-top 3px
+            margin-bottom 3px
+            margin-left 3px
+            margin-right 3px
+            background white
 
             .btn {
                 margin 1px
@@ -470,6 +498,11 @@
             .limits {
                 margin 4px
             }
+        }
+
+        .header-line-2 {
+            background white
+            width 100%
         }
 
         .unauthenticated {
