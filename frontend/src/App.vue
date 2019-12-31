@@ -8,7 +8,7 @@
         <template v-else-if="showAdminPanel">
             <div class="header">
                 <div class="header-line-1">
-                <button class="back" @click.prevent="resetShowAdminPanel()">< Back</button>
+                    <button class="back btn" @click.prevent="resetShowAdminPanel()">< Back</button>
                     <span>Configure user limits</span>
                 </div>
             </div>
@@ -367,10 +367,11 @@
 
 <style lang="stylus">
     html, body {
-        height: 98%
+        height: 100%
         width 100%
         display flex
-        overflow-y hidden
+        margin 0
+        padding 0
     }
 
     .btn-select {
@@ -401,7 +402,9 @@
 </style>
 
 <style lang="stylus" scoped>
-    $headerHeight=28px
+    $headerHeight=32px // change along with #app .header-line-1 btn margin
+    $headerBtnMargin=3px
+    $contentMarginTop=33px // TODO calculate $headerHeight + $headerBtnMargin
     #app {
         display flex
         flex-direction column
@@ -421,7 +424,7 @@
             margin 0 0
             padding-left: 0 // remove circle
             li {
-                margin 0.4em 0
+                margin 0.4em 0.4em
             }
         }
 
@@ -450,7 +453,7 @@
         }
 
         .div-list {
-            margin-top $headerHeight
+            margin-top $contentMarginTop
             overflow-y auto
             width: 100%
 
@@ -463,14 +466,14 @@
             display flex
             justify-content space-between
             align-items: center
-            margin-top 3px
+            /*margin-top 3px
             margin-bottom 3px
             margin-left 3px
-            margin-right 3px
+            margin-right 3px*/
             background white
 
             .btn {
-                margin 1px
+                margin $headerBtnMargin
             }
 
             .back {
