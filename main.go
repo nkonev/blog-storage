@@ -159,19 +159,19 @@ func configureAuthMiddleware(httpClient client.RestClient) authMiddleware {
 			}
 			defer resp.Body.Close()
 
-			// put user id, user name to context
-			b := resp.Body
-			decoder := json.NewDecoder(b)
-			var decodedResponse interface{}
-			err = decoder.Decode(&decodedResponse)
-			if err != nil {
-				Logger.Errorf("Error during decoding json: %v", err)
-				return err
-			}
-
 			if resp.StatusCode == 401 {
 				return c.JSON(resp.StatusCode, &utils.H{"status": "unauthorized"})
 			} else if resp.StatusCode == 200 {
+				// put user id, user name to context
+				b := resp.Body
+				decoder := json.NewDecoder(b)
+				var decodedResponse interface{}
+				err = decoder.Decode(&decodedResponse)
+				if err != nil {
+					Logger.Errorf("Error during decoding json: %v", err)
+					return err
+				}
+
 				dto := decodedResponse.(map[string]interface{})
 				i, ok := dto["id"].(float64)
 				if !ok {
