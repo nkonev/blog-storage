@@ -50,6 +50,7 @@ jobs:
           BUILDDIR=./build;
           EXECUTABLE=./blog-storage;
           IMAGE=nkonev/blog-storage:latest;
+          mkdir -p $BUILDDIR && mv $EXECUTABLE $BUILDDIR && cp ./Dockerfile $BUILDDIR
           docker build -t $IMAGE $BUILDDIR
       - name: Deploy storage
         if: github.ref == 'refs/heads/master'
