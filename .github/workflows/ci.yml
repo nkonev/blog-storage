@@ -59,4 +59,6 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           echo "Will login to docker" &&
           docker login -u="nkonev" -p="${{ secrets.DockerPassword }}"
-          (docker push $IMAGE && echo "Will deploy blog-storage" && ssh -o "BatchMode yes" -o StrictHostKeyChecking=no -q ${{ secrets.ConnectLine }} ${{ secrets.BlogStorageUpdateCommand }} )
+          IMAGE=nkonev/blog-storage:latest;
+          docker push $IMAGE && echo "Will deploy blog-storage"
+          ssh -o "BatchMode yes" -o StrictHostKeyChecking=no -q ${{ secrets.ConnectLine }} ${{ secrets.BlogStorageUpdateCommand }}
