@@ -4,7 +4,7 @@ on:
   push:
 
 jobs:
-  storage:
+  blog-storage:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -43,7 +43,7 @@ jobs:
           docker-compose up -d
           ${HOME}/bin/wait-for-it.sh -t 30 127.0.0.1:27017 -- echo 'mongo is up'
           ${HOME}/bin/wait-for-it.sh -t 30 127.0.0.1:9000 -- echo 'minio is up'
-      - name: Build & test storage
+      - name: Build & test blog-storage
         run: CGO_ENABLED=0 go build -trimpath -ldflags '-w -extldflags "-static"'
       - name: Build docker image
         run: |
@@ -52,11 +52,11 @@ jobs:
           IMAGE=nkonev/blog-storage:latest;
           mkdir -p $BUILDDIR && mv $EXECUTABLE $BUILDDIR && cp ./Dockerfile $BUILDDIR
           docker build -t $IMAGE $BUILDDIR
-      - name: Deploy storage
+      - name: Deploy blog-storage
         if: github.ref == 'refs/heads/master'
         run: |
           mkdir -p ~/.ssh && openssl aes-256-cbc -K ${{ secrets.EncryptedKey }} -iv ${{ secrets.EncryptedIv }} -in ./.secret_keys/id_rsa.enc -out ~/.ssh/id_rsa -d
           chmod 600 ~/.ssh/id_rsa
           echo "Will login to docker" &&
           docker login -u="nkonev" -p="${{ secrets.DockerPassword }}"
-          (cd storage; docker push $IMAGE && echo "Will deploy storage" && ssh -o "BatchMode yes" -o StrictHostKeyChecking=no -q ${{ secrets.ConnectLine }} ${{ secrets.StorageUpdateCommand }} )
+          (docker push $IMAGE && echo "Will deploy blog-storage" && ssh -o "BatchMode yes" -o StrictHostKeyChecking=no -q ${{ secrets.ConnectLine }} ${{ secrets.BlogStorageUpdateCommand }} )
