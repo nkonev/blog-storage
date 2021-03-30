@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
-	"github.com/GeertJohan/go.rice"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/minio/minio-go"
@@ -18,6 +18,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/fx"
+	"io/fs"
 	"net/http"
 	"regexp"
 	"strings"
@@ -98,15 +99,24 @@ func configureEcho(fsh *handlers.FsHandler, authMiddleware authMiddleware, stati
 	return e
 }
 
+//go:embed static
+var embeddedFiles embed.FS
+
+
 func configureStaticMiddleware() staticMiddleware {
-	box := rice.MustFindBox("static").HTTPBox()
+	fsys, err := fs.Sub(embeddedFiles, "static")
+	if err != nil {
+		Logger.Panicf("Cannot open static embedded dir")
+	}
+	staticDir := http.FS(fsys)
+
+	h := http.FileServer(staticDir)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			reqUrl := c.Request().RequestURI
 			if reqUrl == "/" || reqUrl == "/index.html" || reqUrl == "/favicon.ico" || strings.HasPrefix(reqUrl, "/build") || strings.HasPrefix(reqUrl, "/test-assets") {
-				http.FileServer(box).
-					ServeHTTP(c.Response().Writer, c.Request())
+				h.ServeHTTP(c.Response().Writer, c.Request())
 				return nil
 			} else {
 				return next(c)

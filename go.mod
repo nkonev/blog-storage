@@ -1,7 +1,6 @@
 module github.com/nkonev/blog-storage
 
 require (
-	github.com/GeertJohan/go.rice v1.0.0
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/labstack/echo/v4 v4.1.10
@@ -16,7 +15,6 @@ require (
 	go.mongodb.org/mongo-driver v1.1.2
 	go.uber.org/dig v1.7.0 // indirect
 	go.uber.org/fx v1.9.0
-	go.uber.org/goleak v0.10.0 // indirect
 	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc
 	golang.org/x/net v0.0.0-20191007182048-72f939374954 // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
@@ -25,4 +23,4 @@ require (
 	gopkg.in/yaml.v2 v2.2.4 // indirect
 )
 
-go 1.13
+go 1.16

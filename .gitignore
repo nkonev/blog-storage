@@ -8,4 +8,3 @@ vendor
 minio-data
 blog-storage
 node_modules
-rice-box.go
